@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mark — Paintings & Postcards
 
-## Getting Started
+A one-page fantasy portfolio built with Next.js, Tailwind CSS, React Three Fiber and Motion.
+It is a showcase only: there is no online shop. Postcards are sold in person, and commissions are by phone.
 
-First, run the development server:
+## Run it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+nvm use 22        # Next.js 16 needs Node 20.9+
+npm install
+npm run dev       # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Edit the content
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Everything lives in [`src/data/site.ts`](src/data/site.ts):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Artist name, tagline, bio**: `site`
+- **Cell number for commissions**: `site.phoneDisplay` (shown on the page) and `site.phoneRaw` (digits for the call, text and WhatsApp links)
+- **Where to buy postcards**: `postcardShops`
+- **Paintings and postcards**: `paintings` and `postcards`
 
-## Learn More
+The artwork in `public/art/` is generated placeholder art. To use real work, add photos (for example
+`public/art/paintings/my-painting.jpg`) and update `src`, `width` and `height` for each entry.
+The About section image is in `src/components/About.tsx`.
 
-To learn more about Next.js, take a look at the following resources:
+## What's on the page
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **3D hero**: floating candy stars, wobbly blobs, a ring, a crystal and clouds that follow the mouse (`HeroScene.tsx`)
+- **Gallery**: category filters, cards that tilt in 3D under the cursor, and a lightbox with keyboard navigation
+- **Postcards**: cards that flip in 3D to show a hand-written back with a stamp, plus the places to buy them
+- **Commission**: call, text, WhatsApp and copy-number buttons
+- Extras: a sparkle cursor trail, a rainbow scroll-progress bar, a marquee ribbon and scroll reveals.
+  All of them respect "reduce motion".

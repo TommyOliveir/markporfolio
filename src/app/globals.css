@@ -1,26 +1,187 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@theme {
+  /* Paper & ink */
+  --color-paper: #f5efe3;
+  --color-paper-deep: #ebe2cf;
+  --color-card: #fdfaf3;
+  --color-ink: #1d1b2a;
+  --color-ink-soft: #4a4657;
+  --color-ink-faint: #8b8595;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  /* Night sky (the moonlit pieces) */
+  --color-night: #0e1834;
+  --color-navy: #1a2b52;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  /* Watercolour pigments, pulled from Mark's prints */
+  --color-gold: #e6ab2e;
+  --color-gold-soft: #f4d78f;
+  --color-rose: #d63c62;
+  --color-teal: #1b8e8e;
+  --color-ultra: #2c56b8;
+  --color-saffron: #f2a516;
+  --color-marigold: #f9a03f;
+
+  /* Daytime sky (the sunny pieces) */
+  --color-azure: #8fd3ef;
+  --color-azure-soft: #dff3fa;
+  --color-violet: #6b4aa6;
+
+  --font-display: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
+  --font-body: var(--font-garamond), "EB Garamond", Georgia, serif;
+  --font-caps: var(--font-cinzel), "Cinzel", Georgia, serif;
+  --font-script: var(--font-cedarville), "Brush Script MT", cursive;
+
+  --animate-marquee: marquee 70s linear infinite;
+  --animate-twinkle: twinkle 4s ease-in-out infinite;
+  --animate-drift: drift 14s ease-in-out infinite;
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 1; }
+  }
+  @keyframes drift {
+    0%, 100% { transform: translate(0, 0) rotate(-1deg); }
+    50% { transform: translate(12px, -22px) rotate(1.5deg); }
   }
 }
 
+html {
+  overflow-x: clip;
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-paper);
+  /* Cotton-paper tooth */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.28 0 0 0 0 0.2 0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 1.125rem;
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--color-gold-soft);
+  color: var(--color-ink);
+}
+
+@layer components {
+  /* Small engraved capitals for labels, kickers and nav */
+  .caps {
+    font-family: var(--font-caps);
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    font-size: 0.72rem;
+    font-weight: 500;
+  }
+
+  /* A matted print: card stock, hairline edge, soft cast shadow */
+  .print {
+    background: var(--color-card);
+    border: 1px solid color-mix(in oklab, var(--color-ink) 12%, transparent);
+    box-shadow:
+      0 1px 1px rgb(29 27 42 / 0.06),
+      0 10px 24px -10px rgb(29 27 42 / 0.28),
+      0 30px 60px -30px rgb(29 27 42 / 0.25);
+  }
+
+  /* Buttons: an inked plate with a hairline offset frame */
+  .btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0.85rem 1.6rem;
+    font-family: var(--font-caps);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    transition: transform 0.25s ease, background-color 0.25s ease, color 0.25s ease;
+  }
+  .btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 1px solid currentColor;
+    transform: translate(4px, 4px);
+    opacity: 0.45;
+    transition: transform 0.25s ease;
+    pointer-events: none;
+  }
+  .btn:hover {
+    transform: translate(-1px, -1px);
+  }
+  .btn:hover::after {
+    transform: translate(6px, 6px);
+  }
+  .btn-ink {
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+  .btn-ink::after {
+    border-color: var(--color-ink);
+  }
+  .btn-gold {
+    background: var(--color-gold);
+    color: var(--color-ink);
+  }
+  .btn-gold::after {
+    border-color: var(--color-gold);
+  }
+  .btn-line,
+  .btn-line-light {
+    border: 1px solid currentColor;
+  }
+  .btn-line::after,
+  .btn-line-light::after {
+    display: none;
+  }
+  .btn-line {
+    color: var(--color-ink);
+  }
+  .btn-line:hover {
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+  .btn-line-light {
+    color: var(--color-paper);
+  }
+  .btn-line-light:hover {
+    background: var(--color-paper);
+    color: var(--color-ink);
+  }
+
+  /* Underline that looks pulled with a nib */
+  .ink-link {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 1px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    transition: background-size 0.35s ease;
+  }
+  .ink-link:hover {
+    background-size: 100% 1px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

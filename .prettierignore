@@ -1,0 +1,13 @@
+# Build output and dependencies
+.next
+out
+build
+node_modules
+
+# Generated / lock files
+package-lock.json
+next-env.d.ts
+*.tsbuildinfo
+
+# Large generated artwork
+public/art

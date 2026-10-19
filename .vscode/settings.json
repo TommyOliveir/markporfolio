@@ -1,0 +1,31 @@
+{
+  // This project formats with Prettier (see .prettierrc.json), not the global Biome setup.
+  // Turn Biome off here — both the community (simwai) and official extension settings.
+  "biome.enable": false,
+  "biome.enabled": false,
+
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "prettier.requireConfig": true,
+
+  // Replace the global save actions: no Biome fixes, keep ESLint fixes.
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports.biome": "never",
+    "source.fixAll.biome": "never"
+  },
+
+  // Show ESLint problems in TS/TSX too (the global setting only covers JS).
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+
+  // Per-language formatter settings beat the general one above, and the global
+  // settings pick Biome per language — so each needs overriding here.
+  "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[typescriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[javascriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[json]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[jsonc]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[css]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[markdown]": { "editor.defaultFormatter": "esbenp.prettier-vscode" }
+}
