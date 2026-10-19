@@ -12,7 +12,11 @@ const links = [
 ];
 
 // Highlighted link to the in-person shop in the postcards section.
-const shop = { href: "#where-to-buy", label: "Buy postcards at Molo Mansion" };
+const shop = {
+  href: "#where-to-buy",
+  label: "Buy postcards at Molo Mansion", // mobile menu has room for the full wording
+  short: "Buy at Molo Mansion", // desktop pill
+};
 
 export default function Nav() {
   const [scrolled, setScrolled] = useState(false);
@@ -64,16 +68,20 @@ export default function Nav() {
             <li>
               <a
                 href={shop.href}
-                className="caps rounded-full bg-[#E5E9D5] px-4 py-2.5 font-semibold text-ink transition-transform hover:-translate-y-0.5"
+                title={shop.label}
+                // Bigger, bolder and less letter-spaced than the other nav labels so it reads at a glance.
+                className="font-caps rounded-full bg-marigold px-5 py-2.5 text-[0.82rem] font-bold tracking-[0.08em] text-ink uppercase shadow-sm transition-transform hover:-translate-y-0.5"
               >
-                {shop.label}
+                {shop.short}
               </a>
             </li>
             <li>
               <a
                 href="#commission"
                 className={`caps border px-4 py-2.5 transition-colors ${
-                  light ? "border-paper/50 hover:bg-paper hover:text-ink" : "border-ink/40 hover:bg-ink hover:text-paper"
+                  light
+                    ? "border-paper/50 hover:bg-paper hover:text-ink"
+                    : "border-ink/40 hover:bg-ink hover:text-paper"
                 }`}
               >
                 Commission
@@ -88,8 +96,12 @@ export default function Nav() {
             className="grid size-11 place-items-center lg:hidden"
           >
             <span className="relative block h-3 w-6">
-              <span className={`absolute inset-x-0 top-0 h-px bg-current transition-transform ${open ? "translate-y-1.5 rotate-45" : ""}`} />
-              <span className={`absolute inset-x-0 bottom-0 h-px bg-current transition-transform ${open ? "-translate-y-1.5 -rotate-45" : ""}`} />
+              <span
+                className={`absolute inset-x-0 top-0 h-px bg-current transition-transform ${open ? "translate-y-1.5 rotate-45" : ""}`}
+              />
+              <span
+                className={`absolute inset-x-0 bottom-0 h-px bg-current transition-transform ${open ? "-translate-y-1.5 -rotate-45" : ""}`}
+              />
             </span>
           </button>
         </nav>
