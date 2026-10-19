@@ -147,11 +147,11 @@ function FlipCard({ card, tilt }: { card: Postcard; tilt: number }) {
 function WhereToBuy() {
   return (
     <Reveal className="relative mx-auto mt-20 max-w-5xl sm:mt-28">
-      <div id="where-to-buy" className="scroll-mt-10 rounded-2xl bg-marigold p-6 text-ink shadow-xl sm:p-12">
+      <div id="where-to-buy" className="scroll-mt-10 rounded-2xl  bg-white p-6 text-ink shadow-xl sm:p-12">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-14">
           {/* Intro */}
           <div>
-            <p className="caps text-sm font-semibold tracking-[0.16em] text-ink/85">Not sold online</p>
+            <p className="caps text-sm font-semibold tracking-[0.16em] text-marigold text-ink/85">Not sold online</p>
 
             <h3 className="font-display mt-4">
               <span className="block text-4xl leading-tight font-medium tracking-[0.01em] sm:text-5xl">
@@ -188,7 +188,9 @@ function WhereToBuy() {
                     {shop.address}
                   </p>
 
-                  <p className="caps mt-2 text-sm font-semibold tracking-[0.12em] text-ink/85">{shop.hours}</p>
+                  <p className="caps text-marigold mt-2 text-sm font-semibold tracking-[0.12em] text-ink/85">
+                    {shop.hours}
+                  </p>
                 </div>
 
                 <a
