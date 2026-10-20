@@ -1,7 +1,6 @@
 // Everything you'll want to edit lives here: name, phone, shop locations, artworks.
 // To add real artwork, drop a scan/photo into /public/art and point `src` at it
 // (update width/height to the image's real pixel size so it isn't stretched).
-// The current images are generated ink-and-watercolour placeholders.
 
 export const site = {
   artist: "Mark",
@@ -62,7 +61,6 @@ export type Painting = {
   story: string;
 };
 
-// Mark's real pieces come first; the generated placeholders follow.
 // TODO: confirm titles, stories, medium and sizes with Mark.
 export const paintings: Painting[] = [
   {
@@ -175,114 +173,6 @@ export const paintings: Painting[] = [
     height: 2048,
     story:
       "A candy-striped lighthouse on the rocks, a whale leaping to say hello, and sparrows watching from the flowers.",
-  },
-  {
-    slug: "canal-houses-by-moonlight",
-    title: "Canal Houses by Moonlight",
-    year: 2026,
-    medium: "Ink & watercolour on paper",
-    size: "A3",
-    category: "Cities",
-    src: "/art/paintings/canal-houses-by-moonlight.svg",
-    width: 800,
-    height: 1000,
-    story: "The lamps come on one window at a time, and the canal keeps a copy of each.",
-  },
-  {
-    slug: "isles-of-drifting-balloons",
-    title: "Isles of Drifting Balloons",
-    year: 2026,
-    medium: "Ink & watercolour on paper",
-    size: "A3",
-    category: "Reveries",
-    src: "/art/paintings/isles-of-drifting-balloons.svg",
-    width: 800,
-    height: 600,
-    story: "Somewhere above the lake, the islands untie themselves and go wandering.",
-  },
-  {
-    slug: "the-old-cathedral",
-    title: "The Old Cathedral",
-    year: 2025,
-    medium: "Fineliner & watercolour",
-    size: "A3",
-    category: "Cities",
-    src: "/art/paintings/the-old-cathedral.svg",
-    width: 800,
-    height: 1000,
-    story: "Four hundred years of stone, drawn one brick at a time over a single long summer.",
-  },
-  {
-    slug: "voyage-of-the-paper-fleet",
-    title: "Voyage of the Paper Fleet",
-    year: 2025,
-    medium: "Ink & watercolour on paper",
-    size: "40 × 40 cm",
-    category: "Seas",
-    src: "/art/paintings/voyage-of-the-paper-fleet.svg",
-    width: 800,
-    height: 800,
-    story: "The fleet sets out at dawn, and the fish come up to see them off.",
-  },
-  {
-    slug: "city-of-love",
-    title: "City of Love",
-    year: 2026,
-    medium: "Ink & watercolour on paper",
-    size: "A3",
-    category: "Cities",
-    src: "/art/paintings/city-of-love.svg",
-    width: 800,
-    height: 1000,
-    story: "Rooftops, balloons and a sky that can't decide which colour to be.",
-  },
-  {
-    slug: "midnight-bloom",
-    title: "Midnight Bloom",
-    year: 2025,
-    medium: "Ink & watercolour on paper",
-    size: "40 × 40 cm",
-    category: "Reveries",
-    src: "/art/paintings/midnight-bloom.svg",
-    width: 800,
-    height: 800,
-    story: "Some flowers only open for the moon.",
-  },
-  {
-    slug: "where-the-whales-sing",
-    title: "Where the Whales Sing",
-    year: 2024,
-    medium: "Ink & watercolour on paper",
-    size: "A4",
-    category: "Seas",
-    src: "/art/paintings/where-the-whales-sing.svg",
-    width: 800,
-    height: 600,
-    story: "Sailors swear the hull hums on calm nights. They're not wrong.",
-  },
-  {
-    slug: "sky-garden",
-    title: "The Sky Garden",
-    year: 2024,
-    medium: "Fineliner & watercolour",
-    size: "A3",
-    category: "Reveries",
-    src: "/art/paintings/sky-garden.svg",
-    width: 800,
-    height: 1000,
-    story: "A garden that drifted up from the rooftops and decided to stay.",
-  },
-  {
-    slug: "lantern-harbour",
-    title: "Lantern Harbour",
-    year: 2024,
-    medium: "Ink & watercolour on paper",
-    size: "A4",
-    category: "Seas",
-    src: "/art/paintings/lantern-harbour.svg",
-    width: 800,
-    height: 600,
-    story: "Strings of lanterns, a tall ship in from the north, and a sky on fire.",
   },
 ];
 
