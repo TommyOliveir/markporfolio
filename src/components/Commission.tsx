@@ -28,7 +28,6 @@ function Sun({ className = "" }: { className?: string }) {
 
 export default function Commission() {
   const [copied, setCopied] = useState(false);
-  const digits = site.phoneRaw.replace(/\D/g, "");
 
   async function copy() {
     try {
@@ -74,7 +73,7 @@ export default function Commission() {
           </h2>
           <Flourish className="mx-auto mt-5 w-44 text-ink/50" />
           <p className="mx-auto mt-5 max-w-xl text-xl text-ink-soft italic">
-            An original pen-and-watercolour piece made just for you — or for someone who deserves a little magic on their wall.
+            An original ink, acrylic or watercolour piece made just for you — or for someone who deserves a little magic on their wall.
           </p>
         </div>
 
@@ -106,9 +105,9 @@ export default function Commission() {
               <a href={`sms:${site.phoneRaw}`} className="btn btn-line rounded-full">
                 Text
               </a>
-              {site.whatsapp && (
-                <a href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer" className="btn btn-line rounded-full">
-                  WhatsApp
+              {site.messenger && (
+                <a href={site.messenger} target="_blank" rel="noopener noreferrer" className="btn btn-line rounded-full">
+                  Messenger
                 </a>
               )}
             </div>

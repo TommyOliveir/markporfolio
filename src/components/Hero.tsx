@@ -135,7 +135,7 @@ export default function Hero() {
           transition={{ delay: 0.2, duration: 1 }}
           className="caps text-gold-soft"
         >
-          Pen &nbsp;·&nbsp; Ink &nbsp;·&nbsp; Watercolour
+          Acrylics &nbsp;·&nbsp; Oils &nbsp;·&nbsp; Ink &nbsp;·&nbsp; Watercolour
         </motion.p>
 
         <motion.h1
@@ -184,7 +184,7 @@ export default function Hero() {
       </motion.div>
 
       {/* the town, drawn in */}
-      <InkSkyline className="relative mt-auto block h-[30svh] min-h-[190px] w-full sm:h-[34svh]" />
+      <InkSkyline className="relative mt-auto block h-[30svh] min-h-[190px] w-full sm:h-[32vw]" />
     </section>
   );
 }

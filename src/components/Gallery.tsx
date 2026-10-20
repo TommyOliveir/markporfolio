@@ -41,7 +41,7 @@ export default function Gallery() {
       />
 
       <SectionHeading numeral="I" kicker="The Paintings" title="Cities, seas & other reveries">
-        Original pen drawings, washed in watercolour. Select a piece to see it up close.
+        Original drawings, painted in watercolour, acrylic or oil. Select a piece to see it up close.
       </SectionHeading>
 
       <div className="relative mb-14 flex flex-wrap justify-center gap-x-8 gap-y-3">

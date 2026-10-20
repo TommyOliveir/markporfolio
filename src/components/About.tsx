@@ -4,6 +4,11 @@ import { CompassStar, Flourish } from "./Ornaments";
 import Reveal from "./Reveal";
 import Watercolor from "./Watercolor";
 
+// Renders "**bold**" segments in otherwise-plain copy from site.ts.
+function withEmphasis(text: string) {
+  return text.split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : part));
+}
+
 export default function About() {
   return (
     <section id="about" className="relative px-4 py-32 sm:px-6">
@@ -41,7 +46,7 @@ export default function About() {
           <p className="font-display mt-6 text-2xl leading-snug text-ink">{site.intro}</p>
           {site.about.map((para) => (
             <p key={para.slice(0, 20)} className="mt-4 leading-relaxed text-ink-soft">
-              {para}
+              {withEmphasis(para)}
             </p>
           ))}
           <ul className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-ink/15 pt-6">

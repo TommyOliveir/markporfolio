@@ -6,21 +6,21 @@
 export const site = {
   artist: "Mark",
   fullName: "Mark Rivera", // TODO: replace with the artist's real name
-  tagline: "Pen, ink & watercolour — cities, seas and skies that never quite were.",
+  tagline: "Acrylics, and Oils, Ink and Watercolors.",
   intro:
-    "Every piece begins as a fine-line drawing, stroke by stroke, until a whole city stands on the page. Then the colour goes in — loose, bright, spilling over the lines like a dream that won't stay put.",
+    "Every piece begins with a fine-line drawing, stroke by stroke, until a whole city emerges on the page. Then I let the colour take over — loose, vibrant and free-flowing, spilling beyond the lines like a dream that refuses to stay put.",
 
   // Commissions: shown big in the contact section. Use digits only in `phoneRaw`.
   phoneDisplay: "+63 969 033 6049", // TODO: replace with the real cell number
   phoneRaw: "+63 969 033 6049",
-  whatsapp: true, // shows a WhatsApp button that opens a chat with phoneRaw
+  messenger: "https://m.me/", // TODO: set to your Facebook Page username (e.g. https://m.me/yourpage), or "" to hide the button
   instagram: "https://instagram.com/", // TODO: set or remove
 
   about: [
-    "I draw real places — cathedrals, canal houses, rooftops seen from a café table — and then let them drift somewhere else. Islands lift off on balloons, fish swim through the sky, and ships sail out past the edge of the map.",
-    "The originals are drawn in archival ink and painted in watercolour on heavy cotton paper. Favourite pieces are printed as postcards and small prints, so a little of that world can travel home with you.",
+    "As an **ILongo artist, I have developed a style that is distinctly my own**, blending architectural precision with playful surrealism and a vivid imagination. I draw real places — cathedrals, canal houses and rooftops glimpsed from a café table — and transform them into extraordinary worlds where reality and fantasy meet. Islands float away on balloons, fish swim through the sky, and ships sail beyond the edge of the map. My work is an invitation to see familiar places differently, where the ordinary becomes unexpected and imagination knows no boundaries.",
+    "I create my original artworks using archival ink, followed by watercolour, acrylic or oil on heavyweight cotton paper or canvas. Selected pieces are also reproduced as postcards and small prints, allowing a little of my world to travel home with you.",
   ],
-  materials: ["Fineliner", "Archival ink", "Watercolour", "Cotton paper"],
+  materials: ["Fineliner", "Archival ink", "Watercolour", "Acrylic paint", "Oil paint", "Cotton paper"],
 
   // Photo of Mark shown in the About section.
   portrait: { src: "/art/mark.JPG", width: 1536, height: 2048 },
@@ -87,7 +87,8 @@ export const paintings: Painting[] = [
     src: "/art/paintings/2.jpg",
     width: 1536,
     height: 2048,
-    story: "Deep in the garden, where the roses grow wild, the stag keeps very still and lets the flowers grow around him.",
+    story:
+      "Deep in the garden, where the roses grow wild, the stag keeps very still and lets the flowers grow around him.",
   },
   {
     slug: "where-the-ice-cream-grows",
@@ -123,7 +124,8 @@ export const paintings: Painting[] = [
     src: "/art/paintings/5.jpg",
     width: 1920,
     height: 1493,
-    story: "On this street the cats carry umbrellas, the ice-cream cart never runs out, and everyone stops for hopscotch.",
+    story:
+      "On this street the cats carry umbrellas, the ice-cream cart never runs out, and everyone stops for hopscotch.",
   },
   {
     slug: "airships-over-the-old-town",
@@ -171,7 +173,8 @@ export const paintings: Painting[] = [
     src: "/art/paintings/9.JPG",
     width: 1536,
     height: 2048,
-    story: "A candy-striped lighthouse on the rocks, a whale leaping to say hello, and sparrows watching from the flowers.",
+    story:
+      "A candy-striped lighthouse on the rocks, a whale leaping to say hello, and sparrows watching from the flowers.",
   },
   {
     slug: "canal-houses-by-moonlight",
@@ -292,10 +295,46 @@ export type Postcard = {
 };
 
 export const postcards: Postcard[] = [
-  { slug: "greetings-from-paris", title: "Greetings from Paris", src: "/art/postcards/greetings-from-paris.svg", note: "Drew the tower from a café chair. The sky did the rest.", stampColor: "#d63c62" },
-  { slug: "canal-nights", title: "Canal Nights", src: "/art/postcards/canal-nights.svg", note: "Every window lit, just for a moment. Wish you'd seen it.", stampColor: "#1a2b52" },
-  { slug: "balloon-isles", title: "Balloon Isles", src: "/art/postcards/balloon-isles.svg", note: "Our island drifted east today. Waving from up here!", stampColor: "#1b8e8e" },
-  { slug: "the-old-cathedral", title: "The Old Cathedral", src: "/art/postcards/the-old-cathedral.svg", note: "Counted every brick. Lost count twice. Worth it.", stampColor: "#6b4aa6" },
-  { slug: "the-paper-fleet", title: "The Paper Fleet", src: "/art/postcards/the-paper-fleet.svg", note: "Met a fish who knows the way home. Following it.", stampColor: "#2c56b8" },
-  { slug: "midnight-bloom", title: "Midnight Bloom", src: "/art/postcards/midnight-bloom.svg", note: "The garden only opens after dark. Bring a lantern.", stampColor: "#e6ab2e" },
+  {
+    slug: "greetings-from-paris",
+    title: "Greetings from Paris",
+    src: "/art/postcards/greetings-from-paris.svg",
+    note: "Drew the tower from a café chair. The sky did the rest.",
+    stampColor: "#d63c62",
+  },
+  {
+    slug: "canal-nights",
+    title: "Canal Nights",
+    src: "/art/postcards/canal-nights.svg",
+    note: "Every window lit, just for a moment. Wish you'd seen it.",
+    stampColor: "#1a2b52",
+  },
+  {
+    slug: "balloon-isles",
+    title: "Balloon Isles",
+    src: "/art/postcards/balloon-isles.svg",
+    note: "Our island drifted east today. Waving from up here!",
+    stampColor: "#1b8e8e",
+  },
+  {
+    slug: "the-old-cathedral",
+    title: "The Old Cathedral",
+    src: "/art/postcards/the-old-cathedral.svg",
+    note: "Counted every brick. Lost count twice. Worth it.",
+    stampColor: "#6b4aa6",
+  },
+  {
+    slug: "the-paper-fleet",
+    title: "The Paper Fleet",
+    src: "/art/postcards/the-paper-fleet.svg",
+    note: "Met a fish who knows the way home. Following it.",
+    stampColor: "#2c56b8",
+  },
+  {
+    slug: "midnight-bloom",
+    title: "Midnight Bloom",
+    src: "/art/postcards/midnight-bloom.svg",
+    note: "The garden only opens after dark. Bring a lantern.",
+    stampColor: "#e6ab2e",
+  },
 ];

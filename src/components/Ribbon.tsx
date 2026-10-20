@@ -2,7 +2,7 @@ import { CompassStar } from "./Ornaments";
 
 const words = [
   "Original drawings",
-  "Watercolour prints",
+  "Watercolour & acrylic prints",
   "Postcards",
   "Commissions open",
   "Cities",

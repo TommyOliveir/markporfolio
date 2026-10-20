@@ -28,7 +28,7 @@ const cedarville = Cedarville_Cursive({
 });
 
 export const metadata: Metadata = {
-  title: `${site.artist} · Ink & Watercolour`,
+  title: `${site.artist} · Acrylics, Oils & Watercolour`,
   description: site.tagline,
 };
 
