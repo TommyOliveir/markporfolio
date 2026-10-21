@@ -28,7 +28,7 @@ const cedarville = Cedarville_Cursive({
   weight: "400",
 });
 
-const title = `${site.artist} · Acrylics, Oils & Watercolour Artist in Iloilo`;
+const title = `Flyingtreehouse`;
 const description =
   "Original ink and watercolour, acrylic and oil paintings by Mark, an Ilonggo artist in Iloilo City, Philippines. Postcards at Molo Mansion, and commissions open.";
 
