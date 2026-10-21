@@ -26,7 +26,12 @@ function SkyFish({ className = "" }: { className?: string }) {
         <circle cx={132} cy={31} r={3} fill="#1d1b2a" />
         {[0, 1, 2, 3].map((i) =>
           [0, 1, 2].map((k) => (
-            <path key={`${i}-${k}`} d={`M${100 - i * 12} ${24 + k * 9 + (i % 2) * 4}q-6 4 0 8`} fill="none" strokeWidth={1} />
+            <path
+              key={`${i}-${k}`}
+              d={`M${100 - i * 12} ${24 + k * 9 + (i % 2) * 4}q-6 4 0 8`}
+              fill="none"
+              strokeWidth={1}
+            />
           )),
         )}
         <path d="M84 22Q92 8 104 16" fill="#f2a516" />
@@ -43,11 +48,7 @@ export default function Hero() {
   const fade = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
 
   return (
-    <section
-      ref={ref}
-      id="top"
-      className="relative flex min-h-[100svh] flex-col overflow-hidden bg-night text-paper"
-    >
+    <section ref={ref} id="top" className="relative flex min-h-[100svh] flex-col overflow-hidden bg-night text-paper">
       {/* night sky */}
       <motion.div style={{ y: skyY }} className="absolute inset-0">
         <Watercolor
@@ -118,7 +119,10 @@ export default function Hero() {
           animate={{ left: "115%" }}
           transition={{ duration: 48, ease: "linear", repeat: Infinity, delay: 2 }}
         >
-          <motion.div animate={{ y: [0, -14, 0, 10, 0] }} transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}>
+          <motion.div
+            animate={{ y: [0, -14, 0, 10, 0] }}
+            transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+          >
             <SkyFish />
           </motion.div>
         </motion.div>

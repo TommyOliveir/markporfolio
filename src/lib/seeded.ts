@@ -11,14 +11,22 @@ export function seeded(seed: number) {
   return {
     next,
     range: (a: number, b: number) => a + next() * (b - a),
-    pick: <T,>(arr: readonly T[]) => arr[Math.floor(next() * arr.length)],
+    pick: <T>(arr: readonly T[]) => arr[Math.floor(next() * arr.length)],
   };
 }
 
 const r1 = (v: number) => Math.round(v * 10) / 10;
 
 /** A smooth, slightly irregular closed blob — the footprint of a watercolour pool. */
-export function blobPath(rand: ReturnType<typeof seeded>, cx: number, cy: number, rx: number, ry: number, jitter = 0.28, points = 11) {
+export function blobPath(
+  rand: ReturnType<typeof seeded>,
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  jitter = 0.28,
+  points = 11,
+) {
   const pts: [number, number][] = [];
   for (let i = 0; i < points; i++) {
     const a = (i / points) * Math.PI * 2;

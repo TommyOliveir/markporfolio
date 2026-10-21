@@ -52,9 +52,7 @@ export default function Gallery() {
             className={`caps relative pb-2 transition-colors ${filter === f ? "text-ink" : "text-ink-faint hover:text-ink"}`}
           >
             {f}
-            {filter === f && (
-              <motion.span layoutId="filter-ink" className="absolute inset-x-0 bottom-0 h-px bg-rose" />
-            )}
+            {filter === f && <motion.span layoutId="filter-ink" className="absolute inset-x-0 bottom-0 h-px bg-rose" />}
           </button>
         ))}
       </div>
@@ -78,9 +76,17 @@ export default function Gallery() {
                       whileInView={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
                       viewport={{ once: true, margin: "-60px" }}
-                      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: c * 0.08 + Math.floor(i / columns) * 0.02 }}
+                      transition={{
+                        duration: 0.8,
+                        ease: [0.22, 1, 0.36, 1],
+                        delay: c * 0.08 + Math.floor(i / columns) * 0.02,
+                      }}
                     >
-                      <button onClick={() => setOpenIndex(n)} className="group block w-full text-left" aria-label={`View ${p.title}`}>
+                      <button
+                        onClick={() => setOpenIndex(n)}
+                        className="group block w-full text-left"
+                        aria-label={`View ${p.title}`}
+                      >
                         <TiltCard>
                           <div className="print p-3 sm:p-4">
                             <Image
@@ -94,7 +100,9 @@ export default function Gallery() {
                           </div>
                         </TiltCard>
                         <div className="mt-4 flex items-baseline gap-4 px-1">
-                          <span className="font-display text-sm text-ink-faint italic">No. {String(n + 1).padStart(2, "0")}</span>
+                          <span className="font-display text-sm text-ink-faint italic">
+                            No. {String(n + 1).padStart(2, "0")}
+                          </span>
                           <div className="min-w-0 flex-1 border-t border-ink/15 pt-2">
                             <h3 className="font-display text-2xl leading-tight font-medium transition-colors group-hover:text-rose">
                               {p.title}

@@ -42,7 +42,14 @@ export default function Watercolor({
       <defs>
         <filter id={`wc-${id}`} x="-30%" y="-30%" width="160%" height="160%" colorInterpolationFilters="sRGB">
           <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves={4} seed={seed} result="t" />
-          <feDisplacementMap in="SourceGraphic" in2="t" scale={70} xChannelSelector="R" yChannelSelector="G" result="d" />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="t"
+            scale={70}
+            xChannelSelector="R"
+            yChannelSelector="G"
+            result="d"
+          />
           <feGaussianBlur in="d" stdDeviation={softness} result="b" />
           <feMorphology in="b" operator="erode" radius={4} result="e" />
           <feComposite in="b" in2="e" operator="out" result="rim" />

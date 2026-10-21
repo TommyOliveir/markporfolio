@@ -11,12 +11,25 @@ export default function Footer() {
           Thank you for wandering through. May your skies always have a balloon or two in them.
         </p>
         <nav className="flex flex-wrap justify-center gap-x-8 gap-y-3 text-paper/70">
-          <a href="#gallery" className="caps ink-link pb-1 hover:text-paper">Paintings</a>
-          <a href="#postcards" className="caps ink-link pb-1 hover:text-paper">Postcards</a>
-          <a href="#about" className="caps ink-link pb-1 hover:text-paper">About</a>
-          <a href="#commission" className="caps ink-link pb-1 hover:text-paper">Commission</a>
+          <a href="#gallery" className="caps ink-link pb-1 hover:text-paper">
+            Paintings
+          </a>
+          <a href="#postcards" className="caps ink-link pb-1 hover:text-paper">
+            Postcards
+          </a>
+          <a href="#about" className="caps ink-link pb-1 hover:text-paper">
+            About
+          </a>
+          <a href="#commission" className="caps ink-link pb-1 hover:text-paper">
+            Commission
+          </a>
           {site.instagram && (
-            <a href={site.instagram} target="_blank" rel="noopener noreferrer" className="caps ink-link pb-1 hover:text-paper">
+            <a
+              href={site.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="caps ink-link pb-1 hover:text-paper"
+            >
               Instagram
             </a>
           )}

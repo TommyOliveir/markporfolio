@@ -79,7 +79,9 @@ function Sketchcrawl() {
         {text.map((para, i) => (
           <p
             key={para.slice(0, 20)}
-            className={i === 0 ? "font-display mt-6 text-2xl leading-snug text-ink" : "mt-4 leading-relaxed text-ink-soft"}
+            className={
+              i === 0 ? "font-display mt-6 text-2xl leading-snug text-ink" : "mt-4 leading-relaxed text-ink-soft"
+            }
           >
             {para}
           </p>

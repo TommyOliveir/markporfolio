@@ -7,9 +7,21 @@ import Reveal from "./Reveal";
 import Watercolor from "./Watercolor";
 
 const steps = [
-  { title: "Get in touch", text: "Call or message. Tell me who it's for, the size you have in mind, and when you need it.", color: "text-rose" },
-  { title: "Share the place", text: "Your street, a city you loved, the harbour where you met — plus any wonders you'd like to drift in.", color: "text-marigold" },
-  { title: "Watch it come alive", text: "I'll send the pencil sketch, then the ink, then the colour, until it feels exactly right.", color: "text-teal" },
+  {
+    title: "Get in touch",
+    text: "Call or message. Tell me who it's for, the size you have in mind, and when you need it.",
+    color: "text-rose",
+  },
+  {
+    title: "Share the place",
+    text: "Your street, a city you loved, the harbour where you met — plus any wonders you'd like to drift in.",
+    color: "text-marigold",
+  },
+  {
+    title: "Watch it come alive",
+    text: "I'll send the pencil sketch, then the ink, then the colour, until it feels exactly right.",
+    color: "text-teal",
+  },
 ];
 
 function Sun({ className = "" }: { className?: string }) {
@@ -18,7 +30,12 @@ function Sun({ className = "" }: { className?: string }) {
       <g stroke="#1d1b2a" strokeWidth={1.6} strokeLinecap="round">
         {Array.from({ length: 12 }, (_, i) => {
           const a = (i / 12) * Math.PI * 2;
-          return <path key={i} d={`M${50 + Math.cos(a) * 30} ${50 + Math.sin(a) * 30}L${50 + Math.cos(a) * 44} ${50 + Math.sin(a) * 44}`} />;
+          return (
+            <path
+              key={i}
+              d={`M${50 + Math.cos(a) * 30} ${50 + Math.sin(a) * 30}L${50 + Math.cos(a) * 44} ${50 + Math.sin(a) * 44}`}
+            />
+          );
         })}
         <circle cx="50" cy="50" r="22" fill="#f4c24f" />
       </g>
@@ -73,14 +90,17 @@ export default function Commission() {
           </h2>
           <Flourish className="mx-auto mt-5 w-44 text-ink/50" />
           <p className="mx-auto mt-5 max-w-xl text-xl text-ink-soft italic">
-            An original ink, acrylic or watercolour piece made just for you — or for someone who deserves a little magic on their wall.
+            An original ink, acrylic or watercolour piece made just for you — or for someone who deserves a little magic
+            on their wall.
           </p>
         </div>
 
         <ol className="mt-20 grid gap-6 md:grid-cols-3">
           {steps.map((s, i) => (
             <li key={s.title} className="rounded-3xl bg-card/80 p-7 shadow-[0_10px_30px_-15px_rgb(29_27_42/0.35)]">
-              <span className={`font-display text-6xl leading-none font-semibold italic ${s.color}`}>{["I", "II", "III"][i]}</span>
+              <span className={`font-display text-6xl leading-none font-semibold italic ${s.color}`}>
+                {["I", "II", "III"][i]}
+              </span>
               <h3 className="font-display mt-4 text-3xl">{s.title}</h3>
               <p className="mt-2 text-ink-soft">{s.text}</p>
             </li>
@@ -106,7 +126,12 @@ export default function Commission() {
                 Text
               </a>
               {site.messenger && (
-                <a href={site.messenger} target="_blank" rel="noopener noreferrer" className="btn btn-line rounded-full">
+                <a
+                  href={site.messenger}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-line rounded-full"
+                >
                   Messenger
                 </a>
               )}

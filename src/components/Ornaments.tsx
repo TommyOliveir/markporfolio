@@ -15,7 +15,14 @@ export function CompassStar({ className = "", points = 8 }: { className?: string
   return (
     <svg viewBox="0 0 100 100" className={className} aria-hidden>
       {d.map((p, i) => (
-        <path key={i} d={p} fill={i % 2 ? "none" : "currentColor"} stroke="currentColor" strokeWidth={2} strokeLinejoin="round" />
+        <path
+          key={i}
+          d={p}
+          fill={i % 2 ? "none" : "currentColor"}
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinejoin="round"
+        />
       ))}
       <circle cx="50" cy="50" r="5" fill="currentColor" />
     </svg>
@@ -25,7 +32,15 @@ export function CompassStar({ className = "", points = 8 }: { className?: string
 /** A centred ink flourish used under headings. */
 export function Flourish({ className = "" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 240 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.3} strokeLinecap="round" aria-hidden>
+    <svg
+      viewBox="0 0 240 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.3}
+      strokeLinecap="round"
+      aria-hidden
+    >
       <path d="M4 12 H92" />
       <path d="M148 12 H236" />
       <path d="M92 12 C100 4 108 4 112 10 C115 15 108 18 105 13" />
