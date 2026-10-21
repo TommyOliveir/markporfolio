@@ -32,18 +32,8 @@
   --font-caps: var(--font-cinzel), "Cinzel", Georgia, serif;
   --font-script: var(--font-cedarville), "Brush Script MT", cursive;
 
-  --animate-marquee: marquee 70s linear infinite;
   --animate-twinkle: twinkle 4s ease-in-out infinite;
   --animate-drift: drift 14s ease-in-out infinite;
-
-  @keyframes marquee {
-    from {
-      transform: translateX(0);
-    }
-    to {
-      transform: translateX(-50%);
-    }
-  }
   @keyframes twinkle {
     0%,
     100% {
@@ -201,4 +191,12 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Artwork can't be dragged, selected or long-press saved (see ImageProtection). */
+[data-protect] img {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
 }

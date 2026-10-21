@@ -29,7 +29,7 @@ export default function Gallery() {
   const shown = filter === "All" ? paintings : paintings.filter((p) => p.category === filter);
 
   return (
-    <section id="gallery" className="relative px-4 pt-28 pb-28 sm:px-6">
+    <section id="gallery" data-protect className="relative px-4 pt-28 pb-28 sm:px-6">
       <Watercolor
         seed={3}
         className="opacity-70"
@@ -162,6 +162,7 @@ function Lightbox({ index, onChange }: { index: number | null; onChange: (i: num
           exit={{ opacity: 0 }}
           onClick={close}
           className="fixed inset-0 z-[60] grid place-items-center overflow-y-auto bg-night/85 p-4 backdrop-blur-sm"
+          data-protect
           role="dialog"
           aria-modal="true"
           aria-label={p.title}

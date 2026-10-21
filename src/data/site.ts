@@ -2,9 +2,12 @@
 // To add real artwork, drop a scan/photo into /public/art and point `src` at it
 // (update width/height to the image's real pixel size so it isn't stretched).
 
+// Public address of the site. Set NEXT_PUBLIC_SITE_URL in Vercel once the real domain is connected.
+export const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://markporfolio.vercel.app").replace(/\/$/, ""); // TODO: confirm domain
+
 export const site = {
   artist: "Mark",
-  fullName: "Mark Rivera", // TODO: replace with the artist's real name
+  fullName: "Mark Anthony Larida", // TODO: replace with the artist's real name
   tagline: "Acrylics, and Oils, Ink and Watercolors.",
   intro:
     "Every piece begins with a fine-line drawing, stroke by stroke, until a whole city emerges on the page. Then I let the colour take over — loose, vibrant and free-flowing, spilling beyond the lines like a dream that refuses to stay put.",
@@ -42,7 +45,12 @@ export const postcardShops = [
     name: "Molo Mansion",
     address: "Yusay-Consing Mansion, 2 Locsin St Iloilo City",
     hours: "Thursday- Sunday · 2pm – 6pm",
-    mapUrl: "https://maps.app.goo.gl/EbrDqKK7PxUcSQH69",
+    image: "/molomansion.jpg",
+    imageWidth: 407,
+    imageHeight: 541,
+    // Google "Embed a map" URL for the place, so the card shows the mansion photo.
+    mapEmbedUrl:
+      "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3920.4915450491894!2d122.54346149999999!3d10.696518300000001!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33aee5517bb3872f%3A0x81e214299567755c!2sMolo%20Mansion!5e0!3m2!1sen!2shu!4v1792591278769!5m2!1sen!2shu",
   },
 ];
 

@@ -12,7 +12,7 @@ const tilts = [-1.5, 1, -0.5, 1.5, -1, 0.5];
 
 export default function Postcards() {
   return (
-    <section id="postcards" className="relative overflow-hidden bg-paper-deep/60 px-4 pt-28 pb-28 sm:px-6">
+    <section id="postcards" data-protect className="relative overflow-hidden bg-paper-deep/60 px-4 pt-28 pb-28 sm:px-6">
       <Watercolor
         seed={21}
         blooms={[
@@ -175,10 +175,7 @@ function WhereToBuy() {
           {/* Shop locations */}
           <ul className="divide-y divide-ink/30 border-y border-ink/30">
             {postcardShops.map((shop, index) => (
-              <li
-                key={shop.name}
-                className="group flex flex-col items-start gap-4 py-5 sm:flex-row sm:items-center sm:py-6"
-              >
+              <li key={shop.name} className="group flex flex-col gap-4 py-5 sm:py-6">
                 <div className="min-w-0 flex-1">
                   <p className="caps mb-2 text-sm font-semibold tracking-[0.16em] text-ink/85">Location 0{index + 1}</p>
 
@@ -193,16 +190,25 @@ function WhereToBuy() {
                   </p>
                 </div>
 
-                <a
-                  href={shop.mapUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`Get directions to ${shop.name}`}
-                  className="caps inline-flex shrink-0 items-center gap-2 border-b border-ink/40 pb-1 text-sm font-semibold tracking-[0.16em] transition-all duration-200 hover:border-ink hover:gap-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
-                >
-                  Directions
-                  <span aria-hidden="true">↗</span>
-                </a>
+                <div className="grid gap-3 sm:grid-cols-[0.8fr_1.2fr]">
+                  <Image
+                    src={shop.image}
+                    alt={`${shop.name}, a historic mansion in Iloilo City`}
+                    width={shop.imageWidth}
+                    height={shop.imageHeight}
+                    sizes="(min-width: 1024px) 220px, (min-width: 640px) 30vw, 100vw"
+                    className="aspect-4/3 w-full rounded-lg border border-ink/20 object-cover sm:aspect-auto sm:h-full"
+                  />
+
+                  <iframe
+                    title={`Map showing ${shop.name}`}
+                    src={shop.mapEmbedUrl}
+                    loading="lazy"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    allowFullScreen
+                    className="aspect-4/3 w-full rounded-lg border border-ink/20 sm:aspect-auto sm:h-full sm:min-h-72"
+                  />
+                </div>
               </li>
             ))}
           </ul>
