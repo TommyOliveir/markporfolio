@@ -9,6 +9,7 @@ const links = [
   { href: "#gallery", label: "Paintings" },
   { href: "#postcards", label: "Postcards" },
   { href: "#about", label: "About" },
+  { href: "#collectors", label: "Collectors" },
 ];
 
 // Highlighted link to the in-person shop in the postcards section.

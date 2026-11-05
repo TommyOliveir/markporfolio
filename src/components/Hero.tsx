@@ -355,10 +355,10 @@ export default function Hero() {
           transition={{ delay: 1.3, duration: 1 }}
           className="mt-9 flex flex-wrap items-center justify-center gap-4"
         >
-          <a href="#gallery" className="btn btn-gold">
+          <a href="#gallery" className="btn btn-gold rounded-full">
             Enter the gallery
           </a>
-          <a href="#commission" className="btn btn-line-light">
+          <a href="#commission" className="btn btn-line-light rounded-full">
             Commission a piece
           </a>
         </motion.div>

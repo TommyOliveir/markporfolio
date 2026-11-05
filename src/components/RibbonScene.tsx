@@ -3,8 +3,9 @@
 import { Billboard } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useInView } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { CanvasTexture, SRGBColorSpace, type Group, type MeshBasicMaterial } from "three";
+import FloatingMountain, { Spin } from "./FloatingMountain";
 
 const words = [
   { text: "Original drawings", style: "display" },
@@ -14,7 +15,7 @@ const words = [
   { text: "Postcards", style: "display" },
   { text: "Seas", style: "caps" },
   { text: "Commissions open", style: "display" },
-  { text: "Reveries", style: "caps" },
+  { text: "Iloilo", style: "caps" },
 ] as const;
 
 // The ring is an ellipse: wide across the screen, shallow front to back.
@@ -65,7 +66,7 @@ async function makeLabels(): Promise<Label[]> {
 }
 
 // Words circling on a ring. Each one fades as it swings round the back.
-function Ring({ labels }: { labels: Label[] }) {
+function Ring({ labels, spin }: { labels: Label[]; spin: Spin }) {
   const group = useRef<Group>(null);
   const slots = useRef<(Group | null)[]>([]);
   const materials = useRef<(MeshBasicMaterial | null)[]>([]);
@@ -86,7 +87,7 @@ function Ring({ labels }: { labels: Label[] }) {
     g.rotation.x += (state.pointer.y * 0.08 - g.rotation.x) * 0.05;
 
     labels.forEach((_, i) => {
-      const a = (i / labels.length) * Math.PI * 2 + angle.current;
+      const a = (i / labels.length) * Math.PI * 2 + angle.current + spin.angle;
       slots.current[i]?.position.set(Math.sin(a) * RADIUS_X, 0, Math.cos(a) * RADIUS_Z);
       const m = materials.current[i];
       if (m) m.opacity = 0.1 + 0.9 * ((Math.cos(a) + 1) / 2) ** 2; // 1 = facing us, fading behind the island
@@ -121,61 +122,22 @@ function Ring({ labels }: { labels: Label[] }) {
   );
 }
 
-// A little island that floats at the centre of the ring: grass top, rocky underside, a cottage and a tree.
-function Island() {
-  const island = useRef<Group>(null);
-
-  useFrame((state, delta) => {
-    const g = island.current;
-    if (!g) return;
-    g.rotation.y += delta * 0.35;
-    g.position.y = Math.sin(state.clock.elapsedTime * 0.9) * 0.18;
-  });
-
-  return (
-    <group ref={island} scale={1.2}>
-      {/* rocky underside */}
-      <mesh position={[0, -0.85, 0]} rotation={[Math.PI, 0, 0]}>
-        <coneGeometry args={[1.5, 1.7, 7]} />
-        <meshStandardMaterial color="#8a5a3b" flatShading />
-      </mesh>
-      <mesh position={[0.5, -1.55, 0.2]} rotation={[Math.PI, 0.4, 0]}>
-        <coneGeometry args={[0.45, 0.7, 5]} />
-        <meshStandardMaterial color="#6f4a31" flatShading />
-      </mesh>
-      {/* grassy top */}
-      <mesh position={[0, 0, 0]}>
-        <cylinderGeometry args={[1.62, 1.5, 0.3, 7]} />
-        <meshStandardMaterial color="#2f9f7a" flatShading />
-      </mesh>
-      {/* cottage */}
-      <mesh position={[-0.35, 0.4, 0.1]}>
-        <boxGeometry args={[0.65, 0.5, 0.55]} />
-        <meshStandardMaterial color="#f4d78f" flatShading />
-      </mesh>
-      <mesh position={[-0.35, 0.82, 0.1]} rotation={[0, Math.PI / 4, 0]}>
-        <coneGeometry args={[0.55, 0.42, 4]} />
-        <meshStandardMaterial color="#d63c62" flatShading />
-      </mesh>
-      {/* tree */}
-      <mesh position={[0.65, 0.35, -0.2]}>
-        <cylinderGeometry args={[0.06, 0.08, 0.4, 6]} />
-        <meshStandardMaterial color="#6f4a31" flatShading />
-      </mesh>
-      <mesh position={[0.65, 0.78, -0.2]}>
-        <coneGeometry args={[0.32, 0.65, 6]} />
-        <meshStandardMaterial color="#1b8e8e" flatShading />
-      </mesh>
-      <mesh position={[0.65, 1.1, -0.2]}>
-        <coneGeometry args={[0.22, 0.5, 6]} />
-        <meshStandardMaterial color="#1b8e8e" flatShading />
-      </mesh>
-    </group>
-  );
+// Advances the spin each frame so a fling carries on after the visitor lets go.
+function SpinMomentum({ spin }: { spin: Spin }) {
+  useFrame((_, delta) => spin.step(delta));
+  return null;
 }
 
 export default function RibbonScene() {
   const wrapper = useRef<HTMLDivElement>(null);
+  const [spin] = useState(() => new Spin());
+
+  // Dragging (or swiping) sideways turns the islands and the words together.
+  // touch-action: pan-y keeps vertical swipes scrolling the page as usual.
+  function onPointerDown(e: PointerEvent<HTMLDivElement>) {
+    spin.start(e.clientX);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
   const inView = useInView(wrapper);
   const [labels, setLabels] = useState<Label[] | null>(null);
 
@@ -188,17 +150,39 @@ export default function RibbonScene() {
   }, []);
 
   return (
-    <div ref={wrapper} className="h-52 w-full sm:h-72" aria-hidden>
+    <div
+      ref={wrapper}
+      className="h-80 w-full cursor-grab touch-pan-y select-none active:cursor-grabbing sm:h-[30rem]"
+      aria-hidden
+      onPointerDown={onPointerDown}
+      onPointerMove={(e) => spin.move(e.clientX)}
+      onPointerUp={() => spin.end()}
+      onPointerCancel={() => spin.end()}
+    >
       <Canvas
         camera={{ position: [0, 3.2, 13], fov: 38 }}
         dpr={[1, 2]}
+        shadows
         frameloop={inView ? "always" : "never"}
         onCreated={({ camera }) => camera.lookAt(0, 0, 0)}
       >
-        <ambientLight intensity={1.1} />
-        <directionalLight position={[3, 5, 4]} intensity={2.2} />
-        {labels && <Ring labels={labels} />}
-        <Island />
+        {/* haze in the page's paper colour, so distant things soften into the background */}
+        <fog attach="fog" args={["#f5efe3", 14, 30]} />
+        <hemisphereLight args={["#dcefff", "#4a4034", 0.75]} />
+        {/* low warm sun raking across the cliffs, plus a cool light from behind to edge the silhouette */}
+        <directionalLight
+          position={[5, 5, 4]}
+          intensity={3.6}
+          color="#fff0d6"
+          castShadow
+          shadow-mapSize={[1024, 1024]}
+          shadow-bias={-0.0004}
+          shadow-normalBias={0.02}
+        />
+        <directionalLight position={[-4, 2, -5]} intensity={0.9} color="#bcd8ff" />
+        <SpinMomentum spin={spin} />
+        {labels && <Ring labels={labels} spin={spin} />}
+        <FloatingMountain spin={spin} />
       </Canvas>
     </div>
   );

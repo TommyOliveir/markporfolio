@@ -1,4 +1,6 @@
 import About from "@/components/About";
+import BackToTop from "@/components/BackToTop";
+import Collectors from "@/components/Collectors";
 import Commission from "@/components/Commission";
 import Footer from "@/components/Footer";
 import Gallery from "@/components/Gallery";
@@ -49,9 +51,11 @@ export default function Home() {
         <Gallery />
         <Postcards />
         <About />
+        <Collectors />
         <Commission />
       </main>
       <Footer />
+      <BackToTop />
     </>
   );
 }

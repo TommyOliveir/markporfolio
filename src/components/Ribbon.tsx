@@ -3,15 +3,16 @@
 import dynamic from "next/dynamic";
 import { motion, useReducedMotion } from "motion/react";
 import { Fragment } from "react";
+import { site } from "@/data/site";
 import { CompassStar } from "./Ornaments";
 
 const RibbonScene = dynamic(() => import("./RibbonScene"), {
   ssr: false,
-  loading: () => <div className="h-52 w-full sm:h-72" aria-hidden />,
+  loading: () => <div className="h-80 w-full sm:h-[30rem]" aria-hidden />,
 });
 
 const offerings = ["Original drawings", "Watercolour & acrylic prints", "Postcards", "Commissions open"];
-const subjects = ["Cities", "Nature", "Seas", "Reveries"];
+const subjects = ["Cities", "Nature", "Seas", "Iloilo"];
 
 function Row({ items, className, delay = 0 }: { items: string[]; className: string; delay?: number }) {
   return (
@@ -45,7 +46,7 @@ function Placard() {
   );
 }
 
-// A band between the hero and the gallery: words orbiting a gold lattice in 3D.
+// A band between the hero and the gallery: floating islands in 3D, circled by words, that visitors can spin.
 export default function Ribbon() {
   const reduced = useReducedMotion();
 
@@ -57,6 +58,15 @@ export default function Ribbon() {
         <div className="border-y border-ink/15">
           <RibbonScene />
           <p className="sr-only">{[...offerings, ...subjects].join(", ")}</p>
+          <p className="flex flex-wrap items-baseline justify-center gap-x-3 px-4 pb-5 text-center" aria-hidden>
+            <span className="font-script text-xl text-ink-soft sm:text-2xl">
+              A little world from {site.artist}&apos;s sketchbook
+            </span>
+            <span className="caps text-[0.62rem] text-ink-faint">
+              · <span className="sm:hidden">swipe</span>
+              <span className="hidden sm:inline">drag</span> to spin
+            </span>
+          </p>
         </div>
       )}
     </div>

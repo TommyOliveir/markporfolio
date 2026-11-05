@@ -15,8 +15,10 @@ export const site = {
   // Commissions: shown big in the contact section. Use digits only in `phoneRaw`.
   phoneDisplay: "+63 969 033 6049", // TODO: replace with the real cell number
   phoneRaw: "+63 969 033 6049",
-  messenger: "https://m.me/", // TODO: set to your Facebook Page username (e.g. https://m.me/yourpage), or "" to hide the button
-  instagram: "https://instagram.com/", // TODO: set or remove
+  messenger: "https://m.me/markanthony.larida.3", // Messenger chat with Mark's Facebook profile; "" hides the button
+  facebook: "https://www.facebook.com/markanthony.larida.3/",
+  // "Email me" button in the contact card; "" hides it.
+  contactEmail: "laridatommy@gmail.com",
 
   about: [
     "As an **ILongo artist, I have developed a style that is distinctly my own**, blending architectural precision with playful surrealism and a vivid imagination. I draw real places — cathedrals, canal houses and rooftops glimpsed from a café table — and transform them into extraordinary worlds where reality and fantasy meet. Islands float away on balloons, fish swim through the sky, and ships sail beyond the edge of the map. My work is an invitation to see familiar places differently, where the ordinary becomes unexpected and imagination knows no boundaries.",
@@ -54,7 +56,7 @@ export const postcardShops = [
   },
 ];
 
-export const categories = ["Cities", "Nature", "Seas", "Reveries"] as const;
+export const categories = ["Cities", "Nature", "Seas"] as const;
 
 export type Painting = {
   slug: string;
@@ -181,6 +183,54 @@ export const paintings: Painting[] = [
     height: 2048,
     story:
       "A candy-striped lighthouse on the rocks, a whale leaping to say hello, and sparrows watching from the flowers.",
+  },
+];
+
+// Photos of Mark with people who own his work, shown in the Collectors section.
+// To add a real one: put the photo in /public/art/collectors and set `photo` (with its real pixel size).
+// Entries without a `photo` show a drawn placeholder.
+export type Collector = {
+  name: string;
+  role?: string;
+  painting?: string; // title of the piece they took home
+  note?: string; // short handwritten caption
+  photo?: { src: string; width: number; height: number };
+  tint: string; // wash colour behind the placeholder drawing
+};
+
+// TODO: replace these samples with real photos, and get each person's OK before posting.
+export const collectors: Collector[] = [
+  {
+    name: "Martin Nievera",
+    role: "Singer & TV host",
+    note: "At the postcard table",
+    photo: { src: "/art/collectors/martin.jpg", width: 1152, height: 2048 },
+    tint: "#2c56b8",
+  },
+  {
+    name: "Our guest from Japan",
+    role: "Visiting Iloilo",
+    note: "Took home a city print",
+    photo: { src: "/art/collectors/collector-2.jpg", width: 1536, height: 2048 },
+    tint: "#d63c62",
+  },
+  {
+    name: "Evening visitors", // TODO: names
+    note: "Golden hour under the arches",
+    photo: { src: "/art/collectors/collector-4.jpg", width: 1536, height: 2048 },
+    tint: "#f2a516",
+  },
+  {
+    name: "A fellow art lover", // TODO: name
+    note: "In very good company",
+    photo: { src: "/art/collectors/collector-5.jpg", width: 1271, height: 1908 },
+    tint: "#6b4aa6",
+  },
+  {
+    name: "The weekend crew", // TODO: names / how they'd like to be credited
+    note: "Everyone found a favourite",
+    photo: { src: "/art/collectors/collector-3.jpg", width: 2048, height: 1536 },
+    tint: "#1b8e8e",
   },
 ];
 

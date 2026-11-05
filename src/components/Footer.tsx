@@ -20,17 +20,20 @@ export default function Footer() {
           <a href="#about" className="caps ink-link pb-1 hover:text-paper">
             About
           </a>
+          <a href="#collectors" className="caps ink-link pb-1 hover:text-paper">
+            Collectors
+          </a>
           <a href="#commission" className="caps ink-link pb-1 hover:text-paper">
             Commission
           </a>
-          {site.instagram && (
+          {site.facebook && (
             <a
-              href={site.instagram}
+              href={site.facebook}
               target="_blank"
               rel="noopener noreferrer"
               className="caps ink-link pb-1 hover:text-paper"
             >
-              Instagram
+              Facebook
             </a>
           )}
         </nav>
