@@ -17,6 +17,7 @@ import {
   InstancedMesh,
   LatheGeometry,
   Matrix4,
+  MeshPhysicalMaterial,
   MeshStandardMaterial,
   Object3D,
   PlaneGeometry,
@@ -546,13 +547,13 @@ function cross(size: number) {
 // rising to octagonal belfries pierced alternately with lancet and round windows, under tall deep-red
 // spires; two cornices across the front, Tuscan pilasters, a rose window, an arched niche with the
 // Sta. Ana mosaic, a pediment with its own niche and crucifix and little pinnacles; a deep-red roof
-// and a red dome over the crossing. In front, Molo Plaza: a paved axis from the door, a round garden,
-// acacias on both sides, and the white domed rotunda. The facade faces +z; `base` is the ground height.
+// and a red dome over the crossing. In front of it, Molo Plaza (see below). The facade faces +z;
+// `base` is the height of the rock's top.
 function buildChurch(base: number) {
   const parts: BufferGeometry[] = [];
   const add = (geo: BufferGeometry, color: string, x = 0, y = 0, z = 0, turn = 0) =>
     // non-indexed throughout, so the icosahedron leaves merge with the boxes and cones
-    parts.push(paint((geo.index ? geo.toNonIndexed() : geo).rotateY(turn).translate(x, base + y, z), color));
+    parts.push(paint((geo.index ? geo.toNonIndexed() : geo).rotateY(turn).translate(x, y, z), color));
   const coral = "#e9dcc0";
   const trim = "#f4ecdb";
   const red = "#a8322b";
@@ -639,37 +640,226 @@ function buildChurch(base: number) {
     cross(0.04).forEach((g) => add(g, dark, x, 0.77, zF));
   }
 
-  // Molo Plaza: paved axis from the door, a round garden on it, the white domed rotunda, acacias either side
-  add(new BoxGeometry(0.42, 0.01, 0.62), "#d6ccb8", 0, 0.002, -0.06); // forecourt under the church
-  add(new BoxGeometry(0.08, 0.01, 0.32), "#d6ccb8", 0, 0.004, 0.3); // paved spine
-  add(new CylinderGeometry(0.06, 0.06, 0.012, 24), "#d6ccb8", 0, 0.006, 0.27);
-  add(new CylinderGeometry(0.048, 0.048, 0.016, 24), "#4f8a3a", 0, 0.008, 0.27); // round garden
-  add(new CylinderGeometry(0.045, 0.045, 0.012, 16), "#f7f3ea", 0, 0.008, 0.41); // rotunda base
-  for (let k = 0; k < 6; k++) {
-    const a = (k / 6) * Math.PI * 2;
-    add(
-      new CylinderGeometry(0.004, 0.004, 0.06, 6).translate(0, 0.03, 0),
-      "#f7f3ea",
-      Math.sin(a) * 0.034,
-      0.014,
-      0.41 + Math.cos(a) * 0.034,
-    );
+  // The church is built at ground level, then scaled down a little and set at the back of the
+  // island so the plaza fits in front of it.
+  const S = 0.75;
+  const ground = base + 0.02; // top of the stone platform
+  const church = mergeGeometries(parts)
+    .scale(S, S, S)
+    .translate(0, ground + 0.008, -0.2 - zF * S);
+
+  // Molo Plaza, from descriptions of the restored square: a long rectangle in front of the church with
+  // a road on all four sides; brick paving; a main walk on the axis from the church door; a scalloped
+  // fountain at the centre between two round gardens; lawns in low white walls either side; the white domed rotunda on one side, with six goddess statues on a red-and-white
+  // checkerboard floor; the Maria Clara monument facing the fountain; lamp posts along the walk.
+  const plaza: BufferGeometry[] = [church];
+  const put = (geo: BufferGeometry, color: string, x = 0, y = 0, z = 0, turn = 0) =>
+    plaza.push(paint((geo.index ? geo.toNonIndexed() : geo).rotateY(turn).translate(x, ground + y, z), color));
+  const white = "#f1ece1";
+  const top = 0.012; // plaza surface, above the platform
+  const fz = 0.165; // fountain, at the middle of the square
+
+  put(new CylinderGeometry(0.69, 0.66, 0.1, 44), "#d4cab6", 0, -0.05, 0); // stone platform set into the rock
+  put(new BoxGeometry(0.64, 0.006, 1.08), "#5d5d61", 0, 0.003, -0.04); // perimeter road
+  put(new BoxGeometry(0.5, 0.008, 0.38), "#ddd5c4", 0, 0.004, -0.37); // churchyard
+  put(new BoxGeometry(0.52, 0.012, 0.55), "#b8694d", 0, 0.006, fz); // brick-paved square
+  for (let z = -0.095; z < 0.44; z += 0.025) put(new BoxGeometry(0.1, 0.002, 0.003), "#9a523b", 0, top + 0.001, z); // brick courses
+
+  for (const x of [-0.15, 0.15])
+    for (const z of [0.015, 0.315]) {
+      put(new BoxGeometry(0.19, 0.012, 0.22), white, x, top + 0.006, z); // low white wall
+      put(new BoxGeometry(0.176, 0.014, 0.206), "#4c8a3c", x, top + 0.007, z); // lawn
+    }
+
+  // scalloped fountain
+  put(new CylinderGeometry(0.05, 0.054, 0.022, 24), white, 0, top + 0.011, fz);
+  for (let k = 0; k < 12; k++) {
+    const a = (k / 12) * Math.PI * 2;
+    put(new SphereGeometry(0.012, 10, 6), white, Math.sin(a) * 0.05, top + 0.02, fz + Math.cos(a) * 0.05);
   }
-  add(new SphereGeometry(0.04, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), "#f7f3ea", 0, 0.074, 0.41); // rotunda dome
-  add(box(0.008, 0.03, 0.008), trim, 0, 0.014, 0.41); // statue under it
-  for (const [x, z] of [
-    [-0.15, 0.2],
-    [0.15, 0.2],
-    [-0.16, 0.36],
-    [0.16, 0.36],
-    [-0.27, -0.3],
-    [0.27, -0.3],
-  ]) {
-    add(new CylinderGeometry(0.007, 0.011, 0.07, 5).translate(0, 0.035, 0), "#5b4532", x, 0, z);
-    add(new IcosahedronGeometry(0.06, 1).scale(1, 0.45, 1), "#3f7431", x, 0.085, z); // flat acacia crown
+  put(new CylinderGeometry(0.044, 0.044, 0.004, 24), "#6fb3d9", 0, top + 0.022, fz); // water
+  put(new CylinderGeometry(0.008, 0.011, 0.05, 8), white, 0, top + 0.045, fz);
+  put(new CylinderGeometry(0.024, 0.012, 0.012, 12), white, 0, top + 0.072, fz); // upper bowl
+  put(new ConeGeometry(0.01, 0.035, 8), "#d5ecf7", 0, top + 0.095, fz); // spray
+
+  // the two round gardens either side of the fountain, on the axis
+  for (const z of [fz - 0.13, fz + 0.13]) {
+    put(new CylinderGeometry(0.036, 0.036, 0.014, 24), white, 0, top + 0.007, z);
+    put(new CylinderGeometry(0.03, 0.03, 0.018, 24), "#4c8a3c", 0, top + 0.009, z);
+    put(new IcosahedronGeometry(0.016, 1).scale(1, 0.8, 1), "#2f6b2a", 0, top + 0.026, z);
   }
 
-  return mergeGeometries(parts);
+  // the rotunda, on one side of the fountain
+  const rx = -0.15;
+  put(new CylinderGeometry(0.046, 0.048, 0.01, 24), white, rx, top + 0.005, fz); // step
+  for (let i = -3; i < 3; i++)
+    for (let j = -3; j < 3; j++) {
+      const cx = (i + 0.5) * 0.012;
+      const cz = (j + 0.5) * 0.012;
+      if (Math.hypot(cx, cz) > 0.036) continue;
+      put(new BoxGeometry(0.012, 0.002, 0.012), (i + j) % 2 ? "#b23a32" : "#f7f3ea", rx + cx, top + 0.011, fz + cz); // checkerboard
+    }
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * Math.PI * 2;
+    put(
+      new CylinderGeometry(0.0035, 0.004, 0.056, 8),
+      white,
+      rx + Math.sin(a) * 0.038,
+      top + 0.038,
+      fz + Math.cos(a) * 0.038,
+    );
+    const g = a + Math.PI / 6; // a goddess between each pair of columns
+    put(new ConeGeometry(0.006, 0.026, 8), "#faf8f2", rx + Math.sin(g) * 0.022, top + 0.025, fz + Math.cos(g) * 0.022);
+    put(new SphereGeometry(0.0045, 8, 6), "#faf8f2", rx + Math.sin(g) * 0.022, top + 0.041, fz + Math.cos(g) * 0.022);
+  }
+  put(new CylinderGeometry(0.044, 0.044, 0.008, 24), white, rx, top + 0.07, fz); // entablature
+  put(new SphereGeometry(0.042, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), "#f7f3ea", rx, top + 0.074, fz); // dome
+  put(new SphereGeometry(0.006, 8, 6), white, rx, top + 0.118, fz); // finial
+
+  // Maria Clara monument, at the front end of the walk, facing the fountain
+  put(new BoxGeometry(0.03, 0.03, 0.03), "#e6dfd0", 0, top + 0.015, 0.405);
+  put(new ConeGeometry(0.011, 0.04, 10), "#faf8f2", 0, top + 0.05, 0.405); // her gown
+  put(new SphereGeometry(0.006, 8, 6), "#faf8f2", 0, top + 0.074, 0.405);
+
+  // lamp posts along the walk
+  for (const x of [-0.057, 0.057])
+    for (const z of [-0.06, 0.05, 0.28, 0.38]) {
+      put(new CylinderGeometry(0.0022, 0.003, 0.05, 6), "#2f2a2a", x, top + 0.025, z);
+      put(new SphereGeometry(0.0065, 8, 6), "#ffe6a6", x, top + 0.053, z);
+    }
+
+  // Around the square, in place of bare platform: Molo Mansion across the plaza from the church
+  // (cream, two storeys, red roof, an arcade of columns), a row of old stone-and-wood heritage
+  // houses on the other side. (No trees here, so nothing hides the church.) Each building is drawn facing +z, then turned.
+  const building = (x: number, z: number, turn: number, pieces: [BufferGeometry, string][]) =>
+    pieces.forEach(([g, color]) => put(g, color, x, 0, z, turn));
+  const block = (w: number, h: number, d: number, y: number) => new BoxGeometry(w, h, d).translate(0, y + h / 2, 0);
+
+  const mansion: [BufferGeometry, string][] = [
+    [block(0.2, 0.065, 0.13, 0), "#efe4c8"],
+    [block(0.21, 0.06, 0.14, 0.065), "#f6eedb"],
+    [pyramid(0.23, 0.155, 0.07).translate(0, 0.16, 0), "#b8443a"],
+    [block(0.04, 0.05, 0.004, 0).translate(0, 0, 0.067), "#3a2c25"], // door
+  ];
+  for (let k = 0; k < 5; k++) {
+    const x = -0.08 + k * 0.04;
+    mansion.push([new CylinderGeometry(0.004, 0.004, 0.065, 8).translate(x, 0.0325, 0.072), "#fbf8f1"]); // arcade
+    mansion.push([block(0.018, 0.03, 0.004, 0.08).translate(x, 0, 0.071), "#3a3530"]); // upper windows
+  }
+  building(0.47, 0.22, -Math.PI / 2, mansion);
+
+  const roofs = ["#b8443a", "#6b5a4e", "#9a4a2e"];
+  [-0.12, 0.08, 0.28].forEach((z, i) =>
+    building(-0.45, z, Math.PI / 2, [
+      [block(0.12, 0.05, 0.1, 0), "#e3d5b8"], // stone ground floor
+      [block(0.13, 0.045, 0.11, 0.05), "#8a5a3b"], // wooden upper floor
+      [block(0.11, 0.02, 0.004, 0.062).translate(0, 0, 0.056), "#f4ead0"], // capiz window band
+      [block(0.03, 0.04, 0.004, 0).translate(0, 0, 0.051), "#3a2c25"],
+      [pyramid(0.15, 0.13, 0.05).translate(0, 0.12, 0), roofs[i]],
+    ]),
+  );
+
+  return mergeGeometries(plaza);
+}
+
+/* ------------------------------------------------------------ strawberry */
+
+// A giant strawberry drifting with the islands: a glossy, slightly lumpy body (widest at the
+// shoulders, pale under the leaves, deep red at the tip), golden seeds set in little dimples
+// all over it, a frill of green leaves on top and a curled stem.
+function buildStrawberry() {
+  const profile = new SplineCurve(
+    [
+      [0.0, -0.45],
+      [0.12, -0.38],
+      [0.24, -0.22],
+      [0.31, -0.02],
+      [0.33, 0.14],
+      [0.29, 0.27],
+      [0.16, 0.33],
+      [0.0, 0.34],
+    ].map(([r, y]) => new Vector2(r, y)),
+  ).getPoints(48);
+  const radiusAt = (y: number) => {
+    for (let i = 1; i < profile.length; i++) {
+      const a = profile[i - 1];
+      const b = profile[i];
+      if ((y - a.y) * (y - b.y) <= 0) return mix(a.x, b.x, (y - a.y) / (b.y - a.y || 1));
+    }
+    return 0;
+  };
+
+  const body = new LatheGeometry(profile, 56);
+  const pos = body.getAttribute("position");
+  const colors = new Float32Array(pos.count * 3);
+  const deep = new Color("#9e0f1f");
+  const red = new Color("#d8202f");
+  const pale = new Color("#f2c3a2");
+  const c = new Color();
+  const v = new Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    const k = 1 + 0.035 * noise3(v.x * 9, v.y * 9, v.z * 9); // gently lumpy
+    pos.setXYZ(i, v.x * k, v.y, v.z * k);
+    const h = (v.y + 0.45) / 0.79; // 0 at the tip, 1 at the top
+    c.copy(deep)
+      .lerp(red, smooth(0, 0.55, h))
+      .lerp(pale, smooth(0.93, 1, h) * 0.8);
+    colors.set([c.r, c.g, c.b], i * 3);
+  }
+  body.setAttribute("color", new BufferAttribute(colors, 3));
+  body.computeVertexNormals();
+
+  // seeds, spread evenly with the golden angle and set into the skin
+  const count = 190;
+  const seeds = new InstancedMesh(
+    new SphereGeometry(1, 8, 6),
+    new MeshStandardMaterial({ color: "#e9b93f", roughness: 0.5 }),
+    count,
+  );
+  const o = new Object3D();
+  for (let i = 0; i < count; i++) {
+    const y = mix(-0.4, 0.27, (i + 0.5) / count);
+    const a = i * 2.39996;
+    const r = radiusAt(y) * 0.99;
+    o.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
+    o.lookAt(o.position.x * 2, y + 0.15, o.position.z * 2); // lie flat against the skin
+    o.scale.set(0.011, 0.016, 0.005);
+    o.updateMatrix();
+    seeds.setMatrixAt(i, o.matrix);
+  }
+
+  // leaves (sepals) splayed out over the shoulders, and the stem
+  const green: BufferGeometry[] = [];
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2 + (i % 2) * 0.15;
+    const len = i % 2 ? 0.27 : 0.33;
+    green.push(
+      new ConeGeometry(0.075, len, 4)
+        .scale(1, 1, 0.18) // flat like a leaf
+        .translate(0, len / 2, 0)
+        .rotateZ(-Math.PI / 2 - 0.32) // reach outward, lying along the shoulder
+        .rotateY(a)
+        .translate(0, 0.352, 0),
+    );
+  }
+  green.push(
+    new TubeGeometry(
+      new CatmullRomCurve3([new Vector3(0, 0.32, 0), new Vector3(0.01, 0.42, 0.01), new Vector3(0.05, 0.5, 0.03)]),
+      10,
+      0.018,
+      6,
+      false,
+    ),
+  );
+
+  return {
+    body,
+    seeds,
+    leaves: mergeGeometries(green),
+    skin: new MeshPhysicalMaterial({ vertexColors: true, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.2 }),
+    leaf: new MeshStandardMaterial({ color: "#3d8b37", roughness: 0.7, side: DoubleSide }),
+  };
 }
 
 /* ----------------------------------------------------------------- scene */
@@ -745,16 +935,16 @@ const SATELLITES: {
     spec: {
       // broad and flat on top, for the church and its plaza
       profile: [
-        [0.02, -1.0],
-        [0.3, -0.65],
-        [0.5, -0.25],
-        [0.58, 0.08],
-        [0.56, 0.2],
-        [0.36, 0.25],
-        [0.0, 0.26],
+        [0.02, -1.1],
+        [0.34, -0.72],
+        [0.58, -0.3],
+        [0.7, 0.05],
+        [0.7, 0.18],
+        [0.62, 0.22],
+        [0.0, 0.23],
       ],
       seed: 22.7,
-      rough: 0.26,
+      rough: 0.18,
     },
     at: [2.8, 0.6, -2.8], // low enough that the spires clear the top of the band as it swings past
     scale: 1.35,
@@ -784,14 +974,14 @@ function buildScene() {
       : s.tree
         ? { size: 0.6, bushes: 8, edge: 30, trees: 0, vines: 8 }
         : s.church
-          ? { size: 0.6, bushes: 0, edge: 36, trees: 0, vines: 7 }
+          ? { size: 0.6, bushes: 0, edge: 0, trees: 0, vines: 7 }
           : { size: 0.6, bushes: 60, edge: 30, trees: 2, vines: 7 };
     return {
       ...s,
       rock,
       town: s.city ? buildCity(rand, 0.25, 0.46) : null,
       bigTree: s.tree ? buildTree(rand, 0.21) : null,
-      molo: s.church ? buildChurch(0.235) : null,
+      molo: s.church ? buildChurch(0.23) : null,
       ...dressRock(rock, s.spec, growth, rand),
     };
   });
@@ -823,6 +1013,7 @@ function buildScene() {
       .setY(lip.y - drop * 0.55),
   };
 
+  const strawberry = buildStrawberry();
   const mist = mistTexture();
   const puffs = Array.from({ length: 9 }, (_, i) => {
     const a = (i / 9) * Math.PI * 2 + rand.range(-0.3, 0.3);
@@ -834,7 +1025,7 @@ function buildScene() {
     };
   });
 
-  return { stone, bark, vine, brick, glow, wood, main, satellites, waterfall, mist, puffs };
+  return { stone, bark, vine, brick, glow, wood, main, satellites, waterfall, strawberry, mist, puffs };
 }
 
 /** Extra turn the visitor gives the scene by dragging or swiping, with a little fling momentum. */
@@ -873,11 +1064,16 @@ export default function FloatingMountain({ spin }: { spin?: Spin }) {
   const root = useRef<Group>(null);
   const drift = useRef(0); // the slow turn it makes on its own
   const sats = useRef<(Group | null)[]>([]);
+  const berry = useRef<Group>(null);
   const water = useRef<Mesh>(null);
 
   useEffect(
     () => () => {
-      const { stone, bark, vine, brick, glow, wood, main, satellites, waterfall, mist } = scene;
+      const { stone, bark, vine, brick, glow, wood, main, satellites, waterfall, strawberry, mist } = scene;
+      const berry = strawberry;
+      [berry.body, berry.leaves, berry.skin, berry.leaf, berry.seeds.geometry].forEach((x) => x.dispose());
+      (berry.seeds.material as MeshStandardMaterial).dispose();
+      berry.seeds.dispose();
       [stone, bark, vine, brick, glow, wood, waterfall.material, waterfall.geo, mist].forEach((x) => x.dispose());
       satellites.forEach((s) => {
         s.town?.buildings.dispose();
@@ -912,9 +1108,13 @@ export default function FloatingMountain({ spin }: { spin?: Spin }) {
       if (g) g.position.y = s.at[1] + Math.sin(t * 0.8 + s.phase) * 0.12;
     });
     if (water.current) (water.current.material as ShaderMaterial).uniforms.uTime.value = t;
+    if (berry.current) {
+      berry.current.rotation.y += delta * 0.35; // turning slowly on its own axis
+      berry.current.position.y = Math.sin(t * 0.9 + 0.7) * 0.15; // bobbing, relative to its spot
+    }
   });
 
-  const { stone, bark, vine, brick, glow, wood, main, satellites, waterfall, mist, puffs } = scene;
+  const { stone, bark, vine, brick, glow, wood, main, satellites, waterfall, strawberry, mist, puffs } = scene;
 
   return (
     <group ref={root} scale={1.3}>
@@ -971,6 +1171,15 @@ export default function FloatingMountain({ spin }: { spin?: Spin }) {
           {s.molo && <mesh geometry={s.molo} material={brick} castShadow receiveShadow />}
         </group>
       ))}
+
+      {/* a giant strawberry drifting with the islands, tipped a little to show off its leaves */}
+      <group position={[-2.9, -0.5, 2.7]} rotation={[0.25, 0, -0.2]} scale={1.7}>
+        <group ref={berry}>
+          <mesh geometry={strawberry.body} material={strawberry.skin} castShadow receiveShadow />
+          <primitive object={strawberry.seeds} />
+          <mesh geometry={strawberry.leaves} material={strawberry.leaf} castShadow />
+        </group>
+      </group>
 
       {/* drifting seeds and spores catching the light */}
       <Sparkles count={45} scale={[7, 4.5, 5]} size={1.6} speed={0.2} opacity={0.55} color="#d9f7c4" />

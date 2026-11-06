@@ -2,8 +2,6 @@
 
 import { AnimatePresence, motion, useScroll, useSpring } from "motion/react";
 import { useEffect, useState, type MouseEvent } from "react";
-import { site } from "@/data/site";
-import { CompassStar } from "./Ornaments";
 
 const links = [
   { href: "#gallery", label: "Paintings" },
@@ -52,16 +50,19 @@ export default function Nav() {
           light ? "text-paper" : "border-b border-ink/10 bg-paper/90 text-ink backdrop-blur-md"
         }`}
       >
-        <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-          <a href="#top" className="font-display group flex items-center gap-2.5 text-3xl font-medium italic">
-            <CompassStar className="size-5 text-gold transition-transform duration-700 group-hover:rotate-90" />
-            {site.artist}
+        <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 pt-8 pb-5 sm:px-8">
+          {/* Site name; takes you back to the top of the homepage */}
+          <a href="#top" title="Back to the top" className="font-display text-3xl font-medium whitespace-nowrap italic">
+            Flying Treehouse
           </a>
 
-          <ul className="hidden items-center gap-8 lg:flex">
+          <ul className="hidden items-center gap-8 xl:flex">
             {links.map((l) => (
               <li key={l.href}>
-                <a href={l.href} className="caps ink-link pb-1 opacity-80 transition-opacity hover:opacity-100">
+                <a
+                  href={l.href}
+                  className="caps ink-link pb-1 text-[0.82rem] opacity-80 transition-opacity hover:opacity-100"
+                >
                   {l.label}
                 </a>
               </li>
@@ -71,7 +72,7 @@ export default function Nav() {
                 href={shop.href}
                 title={shop.label}
                 // Bigger, bolder and less letter-spaced than the other nav labels so it reads at a glance.
-                className="font-caps rounded-full bg-marigold px-5 py-2.5 text-[0.82rem] font-bold tracking-[0.08em] text-ink uppercase shadow-sm transition-transform hover:-translate-y-0.5"
+                className="font-caps rounded-full bg-marigold px-5 py-2.5 text-[0.88rem] font-bold tracking-[0.08em] text-ink uppercase shadow-sm transition-transform hover:-translate-y-0.5"
               >
                 {shop.short}
               </a>
@@ -79,7 +80,7 @@ export default function Nav() {
             <li>
               <a
                 href="#commission"
-                className={`caps border px-4 py-2.5 transition-colors ${
+                className={`caps border px-4 py-2.5 text-[0.82rem] transition-colors ${
                   light
                     ? "border-paper/50 hover:bg-paper hover:text-ink"
                     : "border-ink/40 hover:bg-ink hover:text-paper"
@@ -94,7 +95,7 @@ export default function Nav() {
             onClick={() => setOpen((o) => !o)}
             aria-expanded={open}
             aria-label="Menu"
-            className="grid size-11 place-items-center lg:hidden"
+            className="grid size-11 place-items-center xl:hidden"
           >
             <span className="relative block h-3 w-6">
               <span
@@ -113,7 +114,7 @@ export default function Nav() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden border-t border-ink/10 px-4 lg:hidden"
+              className="overflow-hidden border-t border-ink/10 px-4 xl:hidden"
             >
               <li className="border-b border-ink/10 py-3">
                 <a

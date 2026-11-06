@@ -62,6 +62,26 @@ function photoRatio(c: Collector) {
   return c.photo ? Math.max(c.photo.width / c.photo.height, 4 / 5) : 4 / 5;
 }
 
+// How wide each card's photo is actually drawn, so the browser downloads a file that size
+// rather than one sized for a third or half of the whole screen. Mirrors the card widths above
+// (max-w-6xl grid, gap-x-10, p-3 frame); wide photos get proportionally wider cards.
+function cardSizes(c: Collector) {
+  const k = +(1.25 * photoRatio(c)).toFixed(3);
+  return [
+    `(min-width: 1024px) ${Math.round(417 * photoRatio(c) + 24)}px`,
+    `(min-width: 640px) calc((50vw - 68px) * ${k} + 24px)`,
+    "(min-width: 416px) 384px",
+    "calc(100vw - 32px)",
+  ].join(", ");
+}
+
+// The zoomed photo fills the screen's height on wide screens and its width on narrow ones;
+// tell the browser which, so it doesn't fetch a 1920px file to show at 400px.
+function zoomSizes(c: Collector) {
+  const ar = c.photo ? c.photo.width / c.photo.height : 1;
+  return `(min-aspect-ratio: ${Math.round(ar * 1000)}/1000) calc((100vh - 12rem) * ${ar.toFixed(3)}), calc(100vw - 5rem)`;
+}
+
 function photoAlt(c: Collector) {
   return `${site.artist} with ${c.name}${c.painting ? `, holding “${c.painting}”` : ""}`;
 }
@@ -93,7 +113,7 @@ function Polaroid({ collector: c, tilt, onOpen }: { collector: Collector; tilt: 
                 src={c.photo.src}
                 alt={photoAlt(c)}
                 fill
-                sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                sizes={cardSizes(c)}
                 className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
               />
               {/* magnifier hint */}
@@ -179,6 +199,12 @@ function PhotoLightbox({ index, onChange }: { index: number | null; onChange: (i
   }, [index, close, step]);
 
   const c = index !== null ? photos[index] : null;
+  // Fetch the photos either side in the background, so stepping through is instant.
+  const neighbours =
+    index !== null && photos.length > 1
+      ? [photos[(index + 1) % photos.length], photos[(index - 1 + photos.length) % photos.length]]
+      : [];
+  const [loaded, setLoaded] = useState<string | null>(null);
 
   return (
     <AnimatePresence>
@@ -188,7 +214,8 @@ function PhotoLightbox({ index, onChange }: { index: number | null; onChange: (i
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={close}
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-night/85 p-4 backdrop-blur-sm sm:p-8"
+          // a solid dim instead of backdrop blur: blurring the whole page every frame is slow on phones
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-night/92 p-4 sm:p-8"
           data-protect
           role="dialog"
           aria-modal="true"
@@ -203,14 +230,22 @@ function PhotoLightbox({ index, onChange }: { index: number | null; onChange: (i
             onClick={(e) => e.stopPropagation()}
             className="print max-w-full p-3 pb-4 sm:p-4 sm:pb-5"
           >
-            <Image
-              src={c.photo.src}
-              alt={photoAlt(c)}
-              width={c.photo.width}
-              height={c.photo.height}
-              sizes="90vw"
-              className="mx-auto h-auto max-h-[calc(100svh-16rem)] sm:max-h-[calc(100svh-12rem)] w-auto max-w-full"
-            />
+            <div className="relative">
+              {/* The card's copy is already downloaded: show it at once, then the sharp one fades in over it. */}
+              <Image src={c.photo.src} alt="" aria-hidden fill sizes={cardSizes(c)} className="object-contain" />
+              <Image
+                src={c.photo.src}
+                alt={photoAlt(c)}
+                width={c.photo.width}
+                height={c.photo.height}
+                sizes={zoomSizes(c)}
+                loading="eager"
+                onLoad={() => setLoaded(c.photo!.src)}
+                className={`relative mx-auto h-auto max-h-[calc(100svh-16rem)] w-auto max-w-full transition-opacity duration-300 sm:max-h-[calc(100svh-12rem)] ${
+                  loaded === c.photo.src ? "opacity-100" : "opacity-0"
+                }`}
+              />
+            </div>
             <figcaption className="mt-3 text-center">
               {c.note && <p className="font-script text-xl text-ink-soft sm:text-2xl">{c.note}</p>}
               <p className="font-display mt-1 text-xl italic sm:text-2xl">
@@ -243,6 +278,21 @@ function PhotoLightbox({ index, onChange }: { index: number | null; onChange: (i
           <LightboxButton label="Close" className="top-3 right-3 sm:top-5 sm:right-5" onClick={close}>
             ✕
           </LightboxButton>
+
+          <div className="hidden" aria-hidden>
+            {neighbours.map((n) => (
+              <Image
+                key={n.name}
+                src={n.photo!.src}
+                alt=""
+                width={n.photo!.width}
+                height={n.photo!.height}
+                sizes={zoomSizes(n)}
+                loading="eager"
+                fetchPriority="low"
+              />
+            ))}
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

@@ -238,7 +238,7 @@ export default function Hero() {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 2, ease: "easeOut" }}
-          className="absolute top-16 right-4 size-14 sm:top-[13%] sm:right-[9%] sm:size-36"
+          className="absolute top-[5rem] right-3 size-12 sm:top-[max(11%,6.25rem)] sm:right-[4%] sm:size-24 md:right-[6%] md:size-28 lg:top-[13%] lg:right-[5%] lg:size-36 xl:right-[9%]"
         >
           <div className="absolute -inset-16 rounded-full bg-[radial-gradient(circle,rgba(244,215,143,0.35),transparent_65%)]" />
           <svg viewBox="0 0 100 100" className="relative size-full" aria-hidden>
@@ -254,24 +254,24 @@ export default function Hero() {
         </motion.div>
 
         {/* drifting things */}
-        <div className="absolute top-[24%] left-[6%] w-10 animate-drift sm:w-16 [animation-duration:16s]">
+        <div className="absolute top-[calc(24%+1.25rem)] left-[6%] w-10 animate-drift sm:top-[max(12%,7.5rem)] sm:left-[5%] sm:w-14 md:top-[38%] lg:top-[24%] lg:left-[6%] lg:w-16 [animation-duration:16s]">
           <Balloon a="#d63c62" b="#f2a516" />
         </div>
-        <div className="absolute top-[11%] left-[30%] hidden w-8 animate-drift md:block [animation-delay:-5s] [animation-duration:19s]">
+        <div className="absolute top-[11%] left-[30%] hidden w-8 animate-drift md:top-[max(11%,7.5rem)] md:left-[3%] md:block lg:top-[max(13%,7rem)] lg:left-[calc(50%-16rem)] xl:top-[11%] xl:left-[30%] [animation-delay:-5s] [animation-duration:19s]">
           <Balloon a="#1b8e8e" b="#f4d78f" />
         </div>
-        <div className="absolute top-[40%] right-[22%] hidden w-11 animate-drift sm:block [animation-delay:-9s] [animation-duration:22s]">
+        <div className="absolute top-[40%] right-[22%] hidden w-11 animate-drift sm:top-[52%] sm:right-[calc(92%-2.75rem)] sm:block md:top-[34%] md:right-[5%] lg:top-[40%] lg:right-[calc(50%-19.125rem)] xl:right-[22%] [animation-delay:-9s] [animation-duration:22s]">
           <Balloon a="#2c56b8" b="#d63c62" />
         </div>
         <motion.div
-          className="absolute top-[28%] left-[15%] hidden w-44 sm:block lg:w-56"
+          className="absolute top-[28%] left-[15%] hidden w-44 sm:top-[calc(15svh+5.5rem)] sm:left-[calc(50%-19rem)] sm:block sm:w-28 md:top-[calc(15svh+2rem)] md:left-[calc(50%-21rem)] md:w-36 lg:top-[calc(15svh+4.5rem)] lg:left-[calc(50%-22.75rem)] lg:w-44 xl:top-[28%] xl:left-[15%] xl:w-56"
           animate={{ y: [0, -12, 0, 14, 0], rotate: [1.5, -1.5, 1.5] }}
           transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
         >
           <FlyingTreehouseGrand />
         </motion.div>
         <motion.div
-          className="absolute top-[11%] right-[5.5rem] w-14 sm:top-[15%] sm:right-[calc(9%+11rem)] sm:w-24"
+          className="absolute top-[4.65rem] right-[5.5rem] w-12 sm:top-[27%] sm:right-[6%] sm:w-20 md:top-[26%] md:right-[calc(50%-16.75rem)] lg:top-[15%] lg:right-[calc(5%+10rem)] lg:w-24 xl:right-[calc(9%+11rem)]"
           animate={{ y: [0, -26, -8, -30, 0] }}
           transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
         >
@@ -284,7 +284,7 @@ export default function Hero() {
           </motion.div>
         </motion.div>
         <motion.div
-          className="absolute top-[52%] right-[3%] w-20 sm:top-[46%] sm:right-[6%] sm:w-32"
+          className="absolute top-[52%] right-[3%] w-20 sm:top-[50%] sm:right-[3%] sm:w-28 md:top-[48%] lg:top-[46%] lg:right-[6%] lg:w-32"
           animate={{ y: [0, -16, 0, 10, 0], rotate: [-2, 2, -2] }}
           transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
         >
@@ -308,13 +308,13 @@ export default function Hero() {
       {/* headline */}
       <motion.div
         style={{ y: textY, opacity: fade }}
-        className="relative z-10 mx-auto flex w-full max-w-4xl flex-col items-center px-4 pt-[16svh] pb-10 text-center sm:pt-[15svh]"
+        className="relative z-10 mx-auto flex w-full max-w-4xl flex-col items-center px-4 pt-[9.25rem] pb-10 text-center sm:pt-[15svh]"
       >
         <motion.p
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 1 }}
-          className="caps text-gold-soft"
+          className="caps text-[0.62rem] tracking-[0.15em] text-gold-soft sm:text-[0.72rem] sm:tracking-[0.22em]"
         >
           Acrylics &nbsp;·&nbsp; Oils &nbsp;·&nbsp; Ink &nbsp;·&nbsp; Watercolour
         </motion.p>
