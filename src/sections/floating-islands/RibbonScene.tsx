@@ -5,7 +5,8 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useInView } from "motion/react";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { CanvasTexture, Fog, PerspectiveCamera, SRGBColorSpace, type Group, type MeshBasicMaterial } from "three";
-import FloatingMountain, { Spin } from "./FloatingMountain";
+import FloatingMountain from "./FloatingMountain";
+import { Spin } from "./spin";
 
 const words = [
   { text: "Original drawings", style: "display" },

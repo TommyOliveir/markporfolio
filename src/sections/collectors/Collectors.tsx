@@ -3,11 +3,13 @@
 import Image from "next/image";
 import { motion } from "motion/react";
 import { useState, type CSSProperties } from "react";
-import { collectors, site, type Collector } from "@/data/site";
-import ImageLightbox, { type LightboxItem } from "./ImageLightbox";
-import Reveal from "./Reveal";
-import SectionHeading from "./SectionHeading";
-import Watercolor from "./Watercolor";
+import { site } from "@/data/site";
+import { collectors, type Collector } from "./content";
+import ImageLightbox, { type LightboxItem } from "@/components/ui/ImageLightbox";
+import Reveal from "@/components/ui/Reveal";
+import SectionHeading from "@/components/ui/SectionHeading";
+import Watercolor from "@/components/ui/Watercolor";
+import { sections } from "@/sections/sections";
 
 const tilts = [-2, 1.5, -1, 2, -1.5, 1];
 
@@ -19,7 +21,11 @@ export default function Collectors() {
 
   return (
     // Night-sky section, like the hero and footer, so the cream polaroids glow and the page alternates night and day.
-    <section id="collectors" data-protect className="relative overflow-hidden bg-night px-4 py-28 text-paper sm:px-6">
+    <section
+      id={sections.collectors.id}
+      data-protect
+      className="relative overflow-hidden bg-night px-4 py-28 text-paper sm:px-6"
+    >
       <Watercolor
         seed={33}
         blend="screen"

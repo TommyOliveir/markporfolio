@@ -3,10 +3,12 @@
 import Image from "next/image";
 import { motion } from "motion/react";
 import { useState } from "react";
-import { site, textiles, type Textile } from "@/data/site";
-import ImageLightbox, { type LightboxItem } from "./ImageLightbox";
-import Reveal from "./Reveal";
-import SectionHeading from "./SectionHeading";
+import { site } from "@/data/site";
+import { textiles, type Textile } from "./content";
+import ImageLightbox, { type LightboxItem } from "@/components/ui/ImageLightbox";
+import Reveal from "@/components/ui/Reveal";
+import SectionHeading from "@/components/ui/SectionHeading";
+import { sections } from "@/sections/sections";
 
 const tilts = [-1.2, 0.8, -0.6, 1.1, -0.9, 0.5, -0.4];
 
@@ -26,7 +28,7 @@ export default function Textiles() {
 
   return (
     <section
-      id="textiles"
+      id={sections.textiles.id}
       data-protect
       className="relative overflow-hidden bg-card px-4 py-28 sm:px-6"
       // a faint woven-linen texture

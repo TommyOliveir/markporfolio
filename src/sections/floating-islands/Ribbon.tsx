@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { motion } from "motion/react";
 import { Fragment, useSyncExternalStore } from "react";
 import { site } from "@/data/site";
-import { CompassStar } from "./Ornaments";
+import { CompassStar } from "@/components/ui/Ornaments";
 
 const RibbonScene = dynamic(() => import("./RibbonScene"), {
   ssr: false,

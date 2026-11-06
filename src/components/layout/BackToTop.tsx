@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
+import { href, sections } from "@/sections/sections";
 
 // Floating button that appears once the hero is scrolled away and takes the visitor back up.
 export default function BackToTop() {
@@ -18,7 +19,7 @@ export default function BackToTop() {
     <AnimatePresence>
       {visible && (
         <motion.a
-          href="#top"
+          href={href(sections.top)}
           aria-label="Back to top"
           title="Back to top"
           initial={{ opacity: 0, y: 16 }}

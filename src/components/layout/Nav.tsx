@@ -2,20 +2,16 @@
 
 import { AnimatePresence, motion, useScroll, useSpring } from "motion/react";
 import { useEffect, useState, type MouseEvent } from "react";
+import { href, navSections, sections } from "@/sections/sections";
 
-const links = [
-  { href: "#gallery", label: "Paintings" },
-  { href: "#textiles", label: "Textiles" },
-  { href: "#postcards", label: "Postcards" },
-  { href: "#about", label: "About" },
-  { href: "#collectors", label: "Collectors" },
-];
+// Nav links and the shop pill come from the sections list, so they always match the page's anchors.
+const links = navSections.map((s) => ({ href: href(s), label: s.label }));
 
 // Highlighted link to the in-person shop in the postcards section.
 const shop = {
-  href: "#where-to-buy",
-  label: "Buy postcards at Molo Mansion", // mobile menu has room for the full wording
-  short: "Buy at Molo Mansion", // desktop pill
+  href: href(sections.whereToBuy),
+  label: sections.whereToBuy.label, // mobile menu has room for the full wording
+  short: sections.whereToBuy.short, // desktop pill
 };
 
 export default function Nav() {
@@ -53,7 +49,11 @@ export default function Nav() {
       >
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 pt-8 pb-5 sm:px-8">
           {/* Site name; takes you back to the top of the homepage */}
-          <a href="#top" title="Back to the top" className="font-display text-3xl font-medium whitespace-nowrap italic">
+          <a
+            href={href(sections.top)}
+            title="Back to the top"
+            className="font-display text-3xl font-medium whitespace-nowrap italic"
+          >
             Flying Treehouse
           </a>
 
@@ -80,7 +80,7 @@ export default function Nav() {
             </li>
             <li>
               <a
-                href="#commission"
+                href={href(sections.commission)}
                 className={`caps rounded-full border px-5 py-2.5 text-[0.82rem] transition-colors ${
                   light
                     ? "border-paper/50 hover:bg-paper hover:text-ink"
@@ -126,7 +126,7 @@ export default function Nav() {
                   {shop.label}
                 </a>
               </li>
-              {[...links, { href: "#commission", label: "Commission a piece" }].map((l) => (
+              {[...links, { href: href(sections.commission), label: "Commission a piece" }].map((l) => (
                 <li key={l.href} className="border-b border-ink/10 last:border-0">
                   <a href={l.href} onClick={(e) => goTo(e, l.href)} className="font-display block py-4 text-2xl italic">
                     {l.label}

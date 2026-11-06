@@ -1,5 +1,6 @@
 import { site } from "@/data/site";
-import { CompassStar } from "./Ornaments";
+import { CompassStar } from "@/components/ui/Ornaments";
+import { href, navSections, sections } from "@/sections/sections";
 
 export default function Footer() {
   return (
@@ -14,24 +15,11 @@ export default function Footer() {
           Thank you for wandering through. May your skies always have a balloon or two in them.
         </p>
         <nav className="flex flex-wrap justify-center gap-x-8 gap-y-3 text-paper/70">
-          <a href="#gallery" className="caps ink-link pb-1 hover:text-paper">
-            Paintings
-          </a>
-          <a href="#textiles" className="caps ink-link pb-1 hover:text-paper">
-            Textiles
-          </a>
-          <a href="#postcards" className="caps ink-link pb-1 hover:text-paper">
-            Postcards
-          </a>
-          <a href="#about" className="caps ink-link pb-1 hover:text-paper">
-            About
-          </a>
-          <a href="#collectors" className="caps ink-link pb-1 hover:text-paper">
-            Collectors
-          </a>
-          <a href="#commission" className="caps ink-link pb-1 hover:text-paper">
-            Commission
-          </a>
+          {[...navSections, sections.commission].map((s) => (
+            <a key={s.id} href={href(s)} className="caps ink-link pb-1 hover:text-paper">
+              {s.label}
+            </a>
+          ))}
           {site.facebook && (
             <a
               href={site.facebook}

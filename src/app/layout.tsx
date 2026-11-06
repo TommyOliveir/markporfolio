@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cedarville_Cursive, Cinzel, Cormorant_Garamond, EB_Garamond } from "next/font/google";
 import { site, siteUrl } from "@/data/site";
-import ImageProtection from "@/components/ImageProtection";
+import ImageProtection from "@/components/layout/ImageProtection";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({

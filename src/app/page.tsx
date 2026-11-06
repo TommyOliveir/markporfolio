@@ -1,15 +1,17 @@
-import About from "@/components/About";
-import BackToTop from "@/components/BackToTop";
-import Collectors from "@/components/Collectors";
-import Commission from "@/components/Commission";
-import Footer from "@/components/Footer";
-import Gallery from "@/components/Gallery";
-import Hero from "@/components/Hero";
-import Nav from "@/components/Nav";
-import Postcards from "@/components/Postcards";
-import Ribbon from "@/components/Ribbon";
-import Textiles from "@/components/Textiles";
-import { paintings, site, siteUrl } from "@/data/site";
+import BackToTop from "@/components/layout/BackToTop";
+import Footer from "@/components/layout/Footer";
+import Nav from "@/components/layout/Nav";
+import { site, siteUrl } from "@/data/site";
+// The landing page's sections, in page order.
+import Hero from "@/sections/hero/Hero";
+import Ribbon from "@/sections/floating-islands/Ribbon";
+import Paintings from "@/sections/paintings/Paintings";
+import Textiles from "@/sections/textiles/Textiles";
+import Postcards from "@/sections/postcards/Postcards";
+import About from "@/sections/about/About";
+import Collectors from "@/sections/collectors/Collectors";
+import Commission from "@/sections/commission/Commission";
+import { paintings } from "@/sections/paintings/content";
 
 // Structured data so search engines understand who the artist is and what the artworks are.
 const structuredData = {
@@ -49,7 +51,7 @@ export default function Home() {
       <main>
         <Hero />
         <Ribbon />
-        <Gallery />
+        <Paintings />
         <Textiles />
         <Postcards />
         <About />

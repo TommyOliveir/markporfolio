@@ -1,8 +1,9 @@
 import Image from "next/image";
 import { site } from "@/data/site";
-import { CompassStar, Flourish } from "./Ornaments";
-import Reveal from "./Reveal";
-import Watercolor from "./Watercolor";
+import { CompassStar, Flourish } from "@/components/ui/Ornaments";
+import Reveal from "@/components/ui/Reveal";
+import Watercolor from "@/components/ui/Watercolor";
+import { href, sections } from "@/sections/sections";
 
 // Renders "**bold**" segments in otherwise-plain copy from site.ts.
 function withEmphasis(text: string) {
@@ -11,7 +12,7 @@ function withEmphasis(text: string) {
 
 export default function About() {
   return (
-    <section id="about" className="relative px-4 py-32 sm:px-6">
+    <section id={sections.about.id} className="relative px-4 py-32 sm:px-6">
       <div className="mx-auto grid max-w-6xl items-center gap-16 md:grid-cols-[0.9fr_1.1fr]">
         <Reveal className="relative mx-auto w-full max-w-sm">
           <Watercolor
@@ -86,7 +87,7 @@ function Sketchcrawl() {
             {para}
           </p>
         ))}
-        <a href="#commission" className="btn btn-ink mt-8">
+        <a href={href(sections.commission)} className="btn btn-ink mt-8">
           Ask about the next crawl
         </a>
       </Reveal>
