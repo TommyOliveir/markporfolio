@@ -38,7 +38,7 @@ export default function About() {
         </Reveal>
 
         <Reveal delay={0.15}>
-          <p className="caps text-rose">III &nbsp;·&nbsp; The Artist</p>
+          <p className="caps text-rose-ink">IV &nbsp;·&nbsp; The Artist</p>
           <h2 className="font-display mt-4 text-5xl leading-[1.02] font-medium sm:text-6xl">
             Hello, I&apos;m <em className="text-teal">{site.artist}</em>
           </h2>
@@ -71,7 +71,7 @@ function Sketchcrawl() {
   return (
     <div className="mx-auto mt-32 grid max-w-6xl items-center gap-14 md:grid-cols-[1.1fr_0.9fr]">
       <Reveal className="order-2 md:order-1">
-        <p className="caps text-rose">Also by {site.artist} &nbsp;·&nbsp; Community</p>
+        <p className="caps text-rose-ink">Also by {site.artist} &nbsp;·&nbsp; Community</p>
         <h3 className="font-display mt-4 text-5xl leading-[1.02] font-medium sm:text-6xl">
           <em className="text-teal">{name}</em>
         </h3>

@@ -5,6 +5,7 @@ import { useEffect, useState, type MouseEvent } from "react";
 
 const links = [
   { href: "#gallery", label: "Paintings" },
+  { href: "#textiles", label: "Textiles" },
   { href: "#postcards", label: "Postcards" },
   { href: "#about", label: "About" },
   { href: "#collectors", label: "Collectors" },
@@ -56,12 +57,12 @@ export default function Nav() {
             Flying Treehouse
           </a>
 
-          <ul className="hidden items-center gap-8 xl:flex">
+          <ul className="hidden items-center gap-6 xl:flex">
             {links.map((l) => (
               <li key={l.href}>
                 <a
                   href={l.href}
-                  className="caps ink-link pb-1 text-[0.82rem] opacity-80 transition-opacity hover:opacity-100"
+                  className="caps ink-link pb-1 text-[0.82rem] tracking-[0.16em] opacity-80 transition-opacity hover:opacity-100"
                 >
                   {l.label}
                 </a>
@@ -72,7 +73,7 @@ export default function Nav() {
                 href={shop.href}
                 title={shop.label}
                 // Bigger, bolder and less letter-spaced than the other nav labels so it reads at a glance.
-                className="font-caps rounded-full bg-marigold px-5 py-2.5 text-[0.88rem] font-bold tracking-[0.08em] text-ink uppercase shadow-sm transition-transform hover:-translate-y-0.5"
+                className="font-caps rounded-full bg-gold px-5 py-2.5 text-[0.88rem] font-bold tracking-[0.08em] text-ink uppercase shadow-sm transition-transform hover:-translate-y-0.5"
               >
                 {shop.short}
               </a>
@@ -80,7 +81,7 @@ export default function Nav() {
             <li>
               <a
                 href="#commission"
-                className={`caps border px-4 py-2.5 text-[0.82rem] transition-colors ${
+                className={`caps rounded-full border px-5 py-2.5 text-[0.82rem] transition-colors ${
                   light
                     ? "border-paper/50 hover:bg-paper hover:text-ink"
                     : "border-ink/40 hover:bg-ink hover:text-paper"
@@ -120,7 +121,7 @@ export default function Nav() {
                 <a
                   href={shop.href}
                   onClick={(e) => goTo(e, shop.href)}
-                  className="font-display block rounded-xl bg-marigold px-4 py-3 text-2xl font-semibold text-ink italic"
+                  className="font-display block rounded-xl bg-gold px-4 py-3 text-2xl font-semibold text-ink italic"
                 >
                   {shop.label}
                 </a>

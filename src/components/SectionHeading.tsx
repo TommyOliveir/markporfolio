@@ -17,7 +17,7 @@ export default function SectionHeading({
   const dark = tone === "paper";
   return (
     <Reveal className="mx-auto mb-16 max-w-2xl text-center">
-      <p className={`caps ${dark ? "text-gold" : "text-rose"}`}>
+      <p className={`caps ${dark ? "text-gold" : "text-rose-ink"}`}>
         {numeral} &nbsp;·&nbsp; {kicker}
       </p>
       <h2

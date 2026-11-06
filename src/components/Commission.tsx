@@ -80,10 +80,11 @@ export default function Commission() {
         // Normal blend: multiplying warm pigments over blue would turn them muddy.
         blend="normal"
         blooms={[
-          { x: 6, y: 10, r: 22, color: "#f07aa8", opacity: 0.35 },
-          { x: 94, y: 22, r: 20, color: "#f4c24f", opacity: 0.4 },
-          { x: 90, y: 88, r: 22, color: "#f07aa8", opacity: 0.3 },
-          { x: 10, y: 80, r: 16, color: "#f4c24f", opacity: 0.32 },
+          // kept soft so the contact card leads
+          { x: 6, y: 10, r: 22, color: "#f07aa8", opacity: 0.2 },
+          { x: 94, y: 22, r: 20, color: "#f4c24f", opacity: 0.24 },
+          { x: 90, y: 88, r: 22, color: "#f07aa8", opacity: 0.18 },
+          { x: 10, y: 80, r: 16, color: "#f4c24f", opacity: 0.19 },
         ]}
       />
       <Sun className="absolute top-10 right-[8%] size-20 animate-[spin_60s_linear_infinite] sm:size-28" />
@@ -96,7 +97,7 @@ export default function Commission() {
 
       <Reveal className="relative mx-auto max-w-5xl">
         <div className="text-center">
-          <p className="caps text-rose">IV &nbsp;·&nbsp; Commissions open</p>
+          <p className="caps text-rose-ink">VI &nbsp;·&nbsp; Commissions open</p>
           <h2 className="font-display mx-auto mt-4 max-w-3xl text-5xl leading-[1.02] font-medium text-balance sm:text-6xl">
             Your city, your sea, <em className="text-rose">your daydream</em>
           </h2>
@@ -135,12 +136,7 @@ export default function Commission() {
             </div>
             <div className="mt-6 flex flex-wrap justify-center gap-4">
               {site.messenger && (
-                <a
-                  href={site.messenger}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn rounded-full bg-marigold text-ink after:border-marigold"
-                >
+                <a href={site.messenger} target="_blank" rel="noopener noreferrer" className="btn btn-gold">
                   Message on Messenger
                 </a>
               )}
@@ -150,7 +146,7 @@ export default function Commission() {
                   href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(site.contactEmail)}&su=${encodeURIComponent(`Commission enquiry via ${site.artist}'s website`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn btn-line rounded-full"
+                  className="btn btn-line"
                 >
                   Email me
                 </a>

@@ -27,7 +27,7 @@ export default function BackToTop() {
           transition={{ duration: 0.3, ease: "easeOut" }}
           className="fixed right-4 bottom-4 z-30 sm:right-6 sm:bottom-6"
         >
-          <span className="btn btn-gold size-12 rounded-full p-0">
+          <span className="btn btn-gold size-12 p-0">
             <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden>
               <path
                 d="M12 19V5M5.5 11.5 12 5l6.5 6.5"

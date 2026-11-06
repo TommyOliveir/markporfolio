@@ -1,8 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { motion, useReducedMotion } from "motion/react";
-import { Fragment } from "react";
+import { motion } from "motion/react";
+import { Fragment, useSyncExternalStore } from "react";
 import { site } from "@/data/site";
 import { CompassStar } from "./Ornaments";
 
@@ -47,15 +47,29 @@ function Placard() {
 }
 
 // A band between the hero and the gallery: floating islands in 3D, circled by words, that visitors can spin.
+// The visitor's "reduce motion" setting. Read through useSyncExternalStore so the server render
+// (which can't know it) and the first browser render agree, then it updates — no hydration mismatch.
+const reduceMotion = "(prefers-reduced-motion: reduce)";
+function subscribe(onChange: () => void) {
+  const query = window.matchMedia(reduceMotion);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
 export default function Ribbon() {
-  const reduced = useReducedMotion();
+  const reduced = useSyncExternalStore(
+    subscribe,
+    () => window.matchMedia(reduceMotion).matches,
+    () => false,
+  );
 
   return (
-    <div className="relative overflow-hidden border-y border-ink/15 py-1">
+    <div className={`relative overflow-hidden ${reduced ? "border-y border-ink/15 py-1" : ""}`}>
       {reduced ? (
         <Placard />
       ) : (
-        <div className="border-y border-ink/15">
+        // A dawn sky: picks up the hero's night blue at the top and melts into the gallery's cream below.
+        <div className="bg-[linear-gradient(to_bottom,#0e1834_0%,#3b3566_20%,#b9868f_42%,#f0c8a6_60%,#f5efe3_88%)]">
           <RibbonScene />
           <p className="sr-only">{[...offerings, ...subjects].join(", ")}</p>
           <p className="flex flex-wrap items-baseline justify-center gap-x-3 px-4 pb-5 text-center" aria-hidden>

@@ -8,7 +8,7 @@ export const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://markporfoli
 export const site = {
   artist: "Mark",
   fullName: "Mark Anthony Larida", // TODO: replace with the artist's real name
-  tagline: "Acrylics, and Oils, Ink and Watercolors.",
+  tagline: "Ink, watercolour, acrylic & oil — real places, set adrift in colour.",
   intro:
     "Every piece begins with a fine-line drawing, stroke by stroke, until a whole city emerges on the page. Then I let the colour take over — loose, vibrant and free-flowing, spilling beyond the lines like a dream that refuses to stay put.",
 
@@ -21,7 +21,7 @@ export const site = {
   contactEmail: "laridatommy@gmail.com",
 
   about: [
-    "As an **ILongo artist, I have developed a style that is distinctly my own**, blending architectural precision with playful surrealism and a vivid imagination. I draw real places — cathedrals, canal houses and rooftops glimpsed from a café table — and transform them into extraordinary worlds where reality and fantasy meet. Islands float away on balloons, fish swim through the sky, and ships sail beyond the edge of the map. My work is an invitation to see familiar places differently, where the ordinary becomes unexpected and imagination knows no boundaries.",
+    "As an **Ilonggo artist, I have developed a style that is distinctly my own**, blending architectural precision with playful surrealism and a vivid imagination. I draw real places — cathedrals, canal houses and rooftops glimpsed from a café table — and transform them into extraordinary worlds where reality and fantasy meet. Islands float away on balloons, fish swim through the sky, and ships sail beyond the edge of the map. My work is an invitation to see familiar places differently, where the ordinary becomes unexpected and imagination knows no boundaries.",
     "I create my original artworks using archival ink, followed by watercolour, acrylic or oil on heavyweight cotton paper or canvas. Selected pieces are also reproduced as postcards and small prints, allowing a little of my world to travel home with you.",
   ],
   materials: ["Fineliner", "Archival ink", "Watercolour", "Acrylic paint", "Oil paint", "Cotton paper"],
@@ -234,19 +234,101 @@ export const collectors: Collector[] = [
   },
 ];
 
+// Textile prints: hand-painted repeat patterns designed for fabric. Images live in /public/art/textiles.
+export type Textile = {
+  slug: string;
+  title: string;
+  src: string;
+  width: number;
+  height: number;
+  motifs: string[]; // what's in the pattern, shown under the title
+};
+
+export const textiles: Textile[] = [
+  {
+    slug: "lotus-and-egrets",
+    title: "Lotus & Egrets",
+    src: "/art/textiles/lotus-and-egrets.jpg",
+    width: 1138,
+    height: 2048,
+    motifs: ["Lotus", "Koi", "Egret", "Frog"],
+  },
+  {
+    slug: "koi-pond",
+    title: "Koi Pond",
+    src: "/art/textiles/koi-pond.jpg",
+    width: 1138,
+    height: 2048,
+    motifs: ["Koi", "Lotus", "Ripples"],
+  },
+  {
+    slug: "hibiscus-and-songbirds",
+    title: "Hibiscus & Songbirds",
+    src: "/art/textiles/hibiscus-and-songbirds.jpg",
+    width: 1252,
+    height: 2048,
+    motifs: ["Hibiscus", "Jasmine", "Songbirds", "Dragonflies"],
+  },
+  {
+    slug: "bamboo-and-egrets",
+    title: "Bamboo & Egrets",
+    src: "/art/textiles/bamboo-and-egrets.jpg",
+    width: 1138,
+    height: 2048,
+    motifs: ["Bamboo", "Egret", "Kingfisher", "Hibiscus"],
+  },
+  {
+    slug: "sunflowers-and-strawberries",
+    title: "Sunflowers & Strawberries",
+    src: "/art/textiles/sunflowers-and-strawberries.jpg",
+    width: 1138,
+    height: 2048,
+    motifs: ["Sunflowers", "Poppies", "Strawberries", "Finches"],
+  },
+  {
+    slug: "peonies-and-parakeets",
+    title: "Peonies & Parakeets",
+    src: "/art/textiles/peonies-and-parakeets.jpg",
+    width: 1000,
+    height: 1800,
+    motifs: ["Peonies", "Tulips", "Parakeets"],
+  },
+  {
+    slug: "deer-in-bloom",
+    title: "Deer in Bloom",
+    src: "/art/textiles/deer-in-bloom.jpg",
+    width: 1138,
+    height: 2048,
+    motifs: ["Spotted deer", "Peonies", "Morning glory", "Blossom"],
+  },
+];
+
 export type Postcard = {
   slug: string;
   title: string;
   src: string;
   note: string; // handwritten message on the back
   stampColor: string;
+  /** Pixel size of the image. Leave out for the usual landscape 3:2 card; a tall image becomes a portrait card. */
+  size?: { width: number; height: number };
+  /** Placeholder artwork, kept here but not shown on the site until a real scan replaces it. */
+  draft?: boolean;
 };
 
 export const postcards: Postcard[] = [
   {
+    slug: "iloilo-city",
+    title: "Iloilo City",
+    src: "/art/postcards/iloilo-city.jpg",
+    note: "Greetings from the City of Love — every church, a bowl of pancit molo, and a bike ride home.",
+    stampColor: "#d63c62",
+    size: { width: 1138, height: 2048 },
+  },
+  {
     slug: "greetings-from-paris",
     title: "Greetings from Paris",
     src: "/art/postcards/greetings-from-paris.svg",
+    draft: true, // TODO: replace with a scan of the real postcard
     note: "Drew the tower from a café chair. The sky did the rest.",
     stampColor: "#d63c62",
   },
@@ -254,6 +336,7 @@ export const postcards: Postcard[] = [
     slug: "canal-nights",
     title: "Canal Nights",
     src: "/art/postcards/canal-nights.svg",
+    draft: true, // TODO: replace with a scan of the real postcard
     note: "Every window lit, just for a moment. Wish you'd seen it.",
     stampColor: "#1a2b52",
   },
@@ -261,6 +344,7 @@ export const postcards: Postcard[] = [
     slug: "balloon-isles",
     title: "Balloon Isles",
     src: "/art/postcards/balloon-isles.svg",
+    draft: true, // TODO: replace with a scan of the real postcard
     note: "Our island drifted east today. Waving from up here!",
     stampColor: "#1b8e8e",
   },
@@ -268,6 +352,7 @@ export const postcards: Postcard[] = [
     slug: "the-old-cathedral",
     title: "The Old Cathedral",
     src: "/art/postcards/the-old-cathedral.svg",
+    draft: true, // TODO: replace with a scan of the real postcard
     note: "Counted every brick. Lost count twice. Worth it.",
     stampColor: "#6b4aa6",
   },
@@ -275,6 +360,7 @@ export const postcards: Postcard[] = [
     slug: "the-paper-fleet",
     title: "The Paper Fleet",
     src: "/art/postcards/the-paper-fleet.svg",
+    draft: true, // TODO: replace with a scan of the real postcard
     note: "Met a fish who knows the way home. Following it.",
     stampColor: "#2c56b8",
   },
@@ -282,6 +368,7 @@ export const postcards: Postcard[] = [
     slug: "midnight-bloom",
     title: "Midnight Bloom",
     src: "/art/postcards/midnight-bloom.svg",
+    draft: true, // TODO: replace with a scan of the real postcard
     note: "The garden only opens after dark. Bring a lantern.",
     stampColor: "#e6ab2e",
   },

@@ -1,10 +1,10 @@
 "use client";
 
 import { Billboard } from "@react-three/drei";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useInView } from "motion/react";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { CanvasTexture, SRGBColorSpace, type Group, type MeshBasicMaterial } from "three";
+import { CanvasTexture, Fog, PerspectiveCamera, SRGBColorSpace, type Group, type MeshBasicMaterial } from "three";
 import FloatingMountain, { Spin } from "./FloatingMountain";
 
 const words = [
@@ -122,6 +122,31 @@ function Ring({ labels, spin }: { labels: Label[]; spin: Spin }) {
   );
 }
 
+// Keeps the islands' whole orbit in frame. On wide screens the camera sits at its usual distance;
+// on narrow ones (phones) it backs off until the scene's width fits, raising its height to keep the
+// same downward angle. The haze moves with it so the look doesn't change.
+const SCENE_WIDTH = 14; // world units that must stay visible across the band
+const BASE_DISTANCE = 13;
+function CameraFit() {
+  const size = useThree((state) => state.size);
+  const get = useThree((state) => state.get);
+  useEffect(() => {
+    const { camera, scene } = get();
+    if (!(camera instanceof PerspectiveCamera)) return;
+    const halfFov = ((camera.fov / 2) * Math.PI) / 180;
+    const aspect = size.width / size.height;
+    const distance = Math.max(BASE_DISTANCE, SCENE_WIDTH / (2 * Math.tan(halfFov) * aspect));
+    camera.position.set(0, (3.2 * distance) / BASE_DISTANCE, distance);
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+    if (scene.fog instanceof Fog) {
+      scene.fog.near = distance + 1;
+      scene.fog.far = distance + 17;
+    }
+  }, [get, size]);
+  return null;
+}
+
 // Advances the spin each frame so a fling carries on after the visitor lets go.
 function SpinMomentum({ spin }: { spin: Spin }) {
   useFrame((_, delta) => spin.step(delta));
@@ -166,8 +191,8 @@ export default function RibbonScene() {
         frameloop={inView ? "always" : "never"}
         onCreated={({ camera }) => camera.lookAt(0, 0, 0)}
       >
-        {/* haze in the page's paper colour, so distant things soften into the background */}
-        <fog attach="fog" args={["#f5efe3", 14, 30]} />
+        {/* dawn-coloured haze matching the middle of the sky behind, so distant things soften into it */}
+        <fog attach="fog" args={["#efcdb6", 14, 30]} />
         <hemisphereLight args={["#dcefff", "#4a4034", 0.75]} />
         {/* low warm sun raking across the cliffs, plus a cool light from behind to edge the silhouette */}
         <directionalLight
@@ -180,6 +205,7 @@ export default function RibbonScene() {
           shadow-normalBias={0.02}
         />
         <directionalLight position={[-4, 2, -5]} intensity={0.9} color="#bcd8ff" />
+        <CameraFit />
         <SpinMomentum spin={spin} />
         {labels && <Ring labels={labels} spin={spin} />}
         <FloatingMountain spin={spin} />

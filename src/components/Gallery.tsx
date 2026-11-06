@@ -11,7 +11,7 @@ import Watercolor from "./Watercolor";
 const filters = ["All", ...categories] as const;
 type Filter = (typeof filters)[number];
 
-// Column count tracks the same breakpoints as Tailwind's sm (640px) and lg (1024px).
+// Column count: three from Tailwind's lg (1024px), otherwise two — phones too, so the gallery isn't one very long column.
 const lg = "(min-width: 1024px)";
 const sm = "(min-width: 640px)";
 function subscribe(onChange: () => void) {
@@ -19,7 +19,7 @@ function subscribe(onChange: () => void) {
   queries.forEach((q) => q.addEventListener("change", onChange));
   return () => queries.forEach((q) => q.removeEventListener("change", onChange));
 }
-const getColumns = () => (window.matchMedia(lg).matches ? 3 : window.matchMedia(sm).matches ? 2 : 1);
+const getColumns = () => (window.matchMedia(lg).matches ? 3 : 2);
 const getServerColumns = () => 3;
 
 export default function Gallery() {
@@ -40,7 +40,7 @@ export default function Gallery() {
         ]}
       />
 
-      <SectionHeading numeral="I" kicker="The Paintings" title="Cities, seas & other reveries">
+      <SectionHeading numeral="I" kicker="The Paintings" title="Cities, nature & the sea">
         Original drawings, painted in watercolour, acrylic or oil. Select a piece to see it up close.
       </SectionHeading>
 
@@ -59,9 +59,9 @@ export default function Gallery() {
 
       {/* Paintings are dealt across the columns in order (1→col 1, 2→col 2, 3→col 3, 4→col 1…)
           so the gallery reads row by row while keeping its staggered, masonry feel. */}
-      <div className="relative mx-auto flex max-w-6xl items-start gap-10">
+      <div className="relative mx-auto flex max-w-6xl items-start gap-4 sm:gap-10">
         {Array.from({ length: columns }, (_, c) => (
-          <div key={c} className="flex min-w-0 flex-1 flex-col gap-12">
+          <div key={c} className="flex min-w-0 flex-1 flex-col gap-8 sm:gap-12">
             <AnimatePresence mode="popLayout">
               {shown
                 .map((p, i) => ({ p, i }))
@@ -88,26 +88,26 @@ export default function Gallery() {
                         aria-label={`View ${p.title}`}
                       >
                         <TiltCard>
-                          <div className="print p-3 sm:p-4">
+                          <div className="print p-1.5 sm:p-4">
                             <Image
                               src={p.src}
                               alt={p.title}
                               width={p.width}
                               height={p.height}
-                              sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                              sizes="(min-width: 1024px) 33vw, 50vw"
                               className="h-auto w-full"
                             />
                           </div>
                         </TiltCard>
-                        <div className="mt-4 flex items-baseline gap-4 px-1">
-                          <span className="font-display text-sm text-ink-faint italic">
+                        <div className="mt-3 flex items-baseline gap-4 px-0.5 sm:mt-4 sm:px-1">
+                          <span className="font-display hidden text-sm text-ink-faint italic sm:inline">
                             No. {String(n + 1).padStart(2, "0")}
                           </span>
                           <div className="min-w-0 flex-1 border-t border-ink/15 pt-2">
-                            <h3 className="font-display text-2xl leading-tight font-medium transition-colors group-hover:text-rose">
+                            <h3 className="font-display text-base leading-tight font-medium transition-colors group-hover:text-rose sm:text-2xl">
                               {p.title}
                             </h3>
-                            <p className="caps mt-1 text-[0.62rem] text-ink-faint">
+                            <p className="caps mt-1 text-[0.55rem] text-ink-faint sm:text-[0.62rem]">
                               {p.category} · {p.year}
                             </p>
                           </div>
@@ -187,7 +187,7 @@ function Lightbox({ index, onChange }: { index: number | null; onChange: (i: num
               />
             </div>
             <div className="flex flex-col justify-center pb-2">
-              <p className="caps text-rose">
+              <p className="caps text-rose-ink">
                 No. {String(index + 1).padStart(2, "0")} · {p.category}
               </p>
               <h3 className="font-display mt-3 text-4xl leading-tight font-medium sm:text-5xl">{p.title}</h3>

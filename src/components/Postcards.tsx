@@ -10,6 +10,10 @@ import Watercolor from "./Watercolor";
 
 const tilts = [-1.5, 1, -0.5, 1.5, -1, 0.5];
 
+// Placeholder cards (draft) stay in the data until a real scan replaces them.
+const shown = postcards.filter((c) => !c.draft);
+const few = shown.length < 3;
+
 export default function Postcards() {
   return (
     <section id="postcards" data-protect className="relative overflow-hidden bg-paper-deep/60 px-4 pt-28 pb-28 sm:px-6">
@@ -22,13 +26,25 @@ export default function Postcards() {
         ]}
       />
 
-      <SectionHeading numeral="II" kicker="Postcards" title="Little letters from elsewhere">
+      <SectionHeading numeral="III" kicker="Postcards" title="Little letters from elsewhere">
         Favourite pieces, printed on heavy card. Turn one over to read the back.
       </SectionHeading>
 
-      <div className="relative mx-auto grid max-w-6xl gap-x-10 gap-y-16 sm:grid-cols-2 lg:grid-cols-3">
-        {postcards.map((card, i) => (
-          <Reveal key={card.slug} delay={(i % 3) * 0.1}>
+      {/* With a full set, a grid (grid-flow-dense lets landscape cards fill in beside a tall portrait one);
+          with only one or two, a centred row so a lone card doesn't sit in the corner of an empty grid. */}
+      <div
+        className={
+          few
+            ? "relative mx-auto flex max-w-6xl flex-wrap justify-center gap-x-10 gap-y-16"
+            : "relative mx-auto grid max-w-6xl grid-flow-dense gap-x-10 gap-y-16 sm:grid-cols-2 lg:grid-cols-3"
+        }
+      >
+        {shown.map((card, i) => (
+          <Reveal
+            key={card.slug}
+            delay={(i % 3) * 0.1}
+            className={few ? "w-full max-w-sm" : isPortrait(card) ? "sm:row-span-2" : undefined}
+          >
             <FlipCard card={card} tilt={tilts[i % tilts.length]} />
           </Reveal>
         ))}
@@ -38,6 +54,8 @@ export default function Postcards() {
     </section>
   );
 }
+
+const isPortrait = (card: Postcard) => !!card.size && card.size.height > card.size.width;
 
 function FlipCard({ card, tilt }: { card: Postcard; tilt: number }) {
   const [flipped, setFlipped] = useState(false);
@@ -53,7 +71,8 @@ function FlipCard({ card, tilt }: { card: Postcard; tilt: number }) {
         onClick={() => setFlipped((f) => !f)}
         aria-pressed={flipped}
         aria-label={`${card.title} postcard — ${flipped ? "show front" : "turn over to read the back"}`}
-        className="block aspect-[3/2] w-full"
+        className="block w-full"
+        style={{ aspectRatio: card.size ? card.size.width / card.size.height : 3 / 2 }}
       >
         <motion.div
           animate={{ rotateY: flipped ? 180 : 0 }}
@@ -68,7 +87,7 @@ function FlipCard({ card, tilt }: { card: Postcard; tilt: number }) {
                 src={card.src}
                 alt={card.title}
                 fill
-                sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                sizes="(min-width: 1024px) 360px, (min-width: 640px) calc(50vw - 3rem), calc(100vw - 2rem)"
                 className="object-cover"
               />
             </div>

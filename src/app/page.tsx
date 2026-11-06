@@ -8,6 +8,7 @@ import Hero from "@/components/Hero";
 import Nav from "@/components/Nav";
 import Postcards from "@/components/Postcards";
 import Ribbon from "@/components/Ribbon";
+import Textiles from "@/components/Textiles";
 import { paintings, site, siteUrl } from "@/data/site";
 
 // Structured data so search engines understand who the artist is and what the artworks are.
@@ -49,6 +50,7 @@ export default function Home() {
         <Hero />
         <Ribbon />
         <Gallery />
+        <Textiles />
         <Postcards />
         <About />
         <Collectors />

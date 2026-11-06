@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { motion } from "motion/react";
+import { useState, type CSSProperties } from "react";
 import { collectors, site, type Collector } from "@/data/site";
+import ImageLightbox, { type LightboxItem } from "./ImageLightbox";
 import Reveal from "./Reveal";
 import SectionHeading from "./SectionHeading";
 import Watercolor from "./Watercolor";
@@ -17,17 +18,21 @@ export default function Collectors() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section id="collectors" data-protect className="relative overflow-hidden bg-paper-deep/60 px-4 py-28 sm:px-6">
+    // Night-sky section, like the hero and footer, so the cream polaroids glow and the page alternates night and day.
+    <section id="collectors" data-protect className="relative overflow-hidden bg-night px-4 py-28 text-paper sm:px-6">
       <Watercolor
         seed={33}
+        blend="screen"
+        softness={26}
         blooms={[
-          { x: 8, y: 12, r: 18, color: "#1b8e8e", opacity: 0.12 },
-          { x: 92, y: 40, r: 16, color: "#f2a516", opacity: 0.16 },
-          { x: 14, y: 82, r: 14, color: "#d63c62", opacity: 0.1 },
+          { x: 8, y: 12, r: 22, color: "#2c56b8", opacity: 0.3 },
+          { x: 92, y: 36, r: 20, color: "#6b4aa6", opacity: 0.28 },
+          { x: 14, y: 82, r: 18, color: "#1b8e8e", opacity: 0.24 },
+          { x: 80, y: 88, r: 16, color: "#d63c62", opacity: 0.1 },
         ]}
       />
 
-      <SectionHeading numeral="III" kicker="Collectors" title="Hung on walls far from home">
+      <SectionHeading numeral="V" kicker="Collectors" title="Hung on walls far from home" tone="paper">
         A few of the lovely people who took a painting home, snapped with {site.artist} on the day.
       </SectionHeading>
 
@@ -51,7 +56,7 @@ export default function Collectors() {
         ))}
       </ul>
 
-      <PhotoLightbox index={openIndex} onChange={setOpenIndex} />
+      <ImageLightbox items={zoomItems} index={openIndex} onChange={setOpenIndex} noun="photo" />
     </section>
   );
 }
@@ -73,13 +78,6 @@ function cardSizes(c: Collector) {
     "(min-width: 416px) 384px",
     "calc(100vw - 32px)",
   ].join(", ");
-}
-
-// The zoomed photo fills the screen's height on wide screens and its width on narrow ones;
-// tell the browser which, so it doesn't fetch a 1920px file to show at 400px.
-function zoomSizes(c: Collector) {
-  const ar = c.photo ? c.photo.width / c.photo.height : 1;
-  return `(min-aspect-ratio: ${Math.round(ar * 1000)}/1000) calc((100vh - 12rem) * ${ar.toFixed(3)}), calc(100vw - 5rem)`;
 }
 
 function photoAlt(c: Collector) {
@@ -135,9 +133,9 @@ function Polaroid({ collector: c, tilt, onOpen }: { collector: Collector; tilt: 
       </div>
 
       <figcaption className="mt-5 px-1 text-center">
-        <p className="font-display text-2xl italic">{c.name}</p>
+        <p className="font-display text-2xl text-paper italic">{c.name}</p>
         {(c.role || c.painting) && (
-          <p className="caps mt-1 text-[0.62rem] text-ink-faint">
+          <p className="caps mt-1 text-[0.62rem] text-paper/65">
             {c.role}
             {c.role && c.painting && <> &nbsp;·&nbsp; </>}
             {c.painting && <>owns “{c.painting}”</>}
@@ -172,155 +170,15 @@ function PlaceholderPhoto({ tint }: { tint: string }) {
   );
 }
 
-// Full-size view of a collector photo. Esc closes, arrow keys step through the photos.
-function PhotoLightbox({ index, onChange }: { index: number | null; onChange: (i: number | null) => void }) {
-  const close = useCallback(() => onChange(null), [onChange]);
-  const step = useCallback(
-    (d: number) => {
-      if (index === null) return;
-      onChange((index + d + photos.length) % photos.length);
-    },
-    [index, onChange],
-  );
-
-  useEffect(() => {
-    if (index === null) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
-      if (e.key === "ArrowRight") step(1);
-      if (e.key === "ArrowLeft") step(-1);
-    };
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [index, close, step]);
-
-  const c = index !== null ? photos[index] : null;
-  // Fetch the photos either side in the background, so stepping through is instant.
-  const neighbours =
-    index !== null && photos.length > 1
-      ? [photos[(index + 1) % photos.length], photos[(index - 1 + photos.length) % photos.length]]
-      : [];
-  const [loaded, setLoaded] = useState<string | null>(null);
-
-  return (
-    <AnimatePresence>
-      {c?.photo && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={close}
-          // a solid dim instead of backdrop blur: blurring the whole page every frame is slow on phones
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-night/92 p-4 sm:p-8"
-          data-protect
-          role="dialog"
-          aria-modal="true"
-          aria-label={photoAlt(c)}
-        >
-          <motion.figure
-            key={c.name}
-            initial={{ opacity: 0, scale: 0.96, y: 12 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            onClick={(e) => e.stopPropagation()}
-            className="print max-w-full p-3 pb-4 sm:p-4 sm:pb-5"
-          >
-            <div className="relative">
-              {/* The card's copy is already downloaded: show it at once, then the sharp one fades in over it. */}
-              <Image src={c.photo.src} alt="" aria-hidden fill sizes={cardSizes(c)} className="object-contain" />
-              <Image
-                src={c.photo.src}
-                alt={photoAlt(c)}
-                width={c.photo.width}
-                height={c.photo.height}
-                sizes={zoomSizes(c)}
-                loading="eager"
-                onLoad={() => setLoaded(c.photo!.src)}
-                className={`relative mx-auto h-auto max-h-[calc(100svh-16rem)] w-auto max-w-full transition-opacity duration-300 sm:max-h-[calc(100svh-12rem)] ${
-                  loaded === c.photo.src ? "opacity-100" : "opacity-0"
-                }`}
-              />
-            </div>
-            <figcaption className="mt-3 text-center">
-              {c.note && <p className="font-script text-xl text-ink-soft sm:text-2xl">{c.note}</p>}
-              <p className="font-display mt-1 text-xl italic sm:text-2xl">
-                {c.name}
-                {c.role && (
-                  <span className="caps ml-3 align-middle text-[0.62rem] text-ink-faint not-italic">{c.role}</span>
-                )}
-              </p>
-            </figcaption>
-          </motion.figure>
-
-          {photos.length > 1 && (
-            <>
-              <LightboxButton
-                label="Previous photo"
-                className="bottom-5 left-5 sm:top-1/2 sm:bottom-auto sm:left-6 sm:-translate-y-1/2"
-                onClick={() => step(-1)}
-              >
-                ←
-              </LightboxButton>
-              <LightboxButton
-                label="Next photo"
-                className="right-5 bottom-5 sm:top-1/2 sm:right-6 sm:bottom-auto sm:-translate-y-1/2"
-                onClick={() => step(1)}
-              >
-                →
-              </LightboxButton>
-            </>
-          )}
-          <LightboxButton label="Close" className="top-3 right-3 sm:top-5 sm:right-5" onClick={close}>
-            ✕
-          </LightboxButton>
-
-          <div className="hidden" aria-hidden>
-            {neighbours.map((n) => (
-              <Image
-                key={n.name}
-                src={n.photo!.src}
-                alt=""
-                width={n.photo!.width}
-                height={n.photo!.height}
-                sizes={zoomSizes(n)}
-                loading="eager"
-                fetchPriority="low"
-              />
-            ))}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-function LightboxButton({
-  label,
-  className,
-  onClick,
-  children,
-}: {
-  label: string;
-  className: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      className={`absolute grid size-11 place-items-center rounded-full bg-paper/90 text-lg text-ink shadow-lg transition-colors hover:bg-gold ${className}`}
-    >
-      {children}
-    </button>
-  );
-}
+// What the zoom view shows for each photo.
+const zoomItems: LightboxItem[] = photos.map((c) => ({
+  key: c.name,
+  src: c.photo!.src,
+  width: c.photo!.width,
+  height: c.photo!.height,
+  alt: photoAlt(c),
+  thumbSizes: cardSizes(c),
+  title: c.name,
+  subtitle: c.role,
+  note: c.note,
+}));
