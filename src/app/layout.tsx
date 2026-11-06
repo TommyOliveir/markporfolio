@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cedarville_Cursive, Cinzel, Cormorant_Garamond, EB_Garamond } from "next/font/google";
 import { site, siteUrl } from "@/data/site";
+import { GoogleTagManager } from "@next/third-parties/google";
 import ImageProtection from "@/components/layout/ImageProtection";
 import "./globals.css";
 
@@ -62,12 +63,16 @@ export const viewport: Viewport = {
   themeColor: "#0e1834",
 };
 
+const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
       className={`${cormorant.variable} ${garamond.variable} ${cinzel.variable} ${cedarville.variable} antialiased`}
     >
+      {/* Google Tag Manager — only when the container ID is set (see .env.example) */}
+      {gtmId && <GoogleTagManager gtmId={gtmId} />}
       <body className="min-h-screen">
         <ImageProtection />
         {children}
