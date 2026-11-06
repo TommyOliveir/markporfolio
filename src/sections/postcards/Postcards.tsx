@@ -31,7 +31,7 @@ export default function Postcards() {
       />
 
       <SectionHeading numeral="III" kicker="Postcards" title="Little letters from elsewhere">
-        Favourite pieces, printed on heavy card. Turn one over to read the back.
+        Favourite pieces, printed on heavy card and sold at Molo Mansion in Iloilo City. Turn one over to read the back.
       </SectionHeading>
 
       {/* With a full set, a grid (grid-flow-dense lets landscape cards fill in beside a tall portrait one);

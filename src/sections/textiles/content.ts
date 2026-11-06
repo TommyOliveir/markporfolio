@@ -1,6 +1,8 @@
 // Content for the Textiles section.
 
 // Textile prints: hand-painted repeat patterns designed for fabric. Images live in /public/art/textiles.
+import { site } from "@/data/site";
+
 export type Textile = {
   slug: string;
   title: string;
@@ -9,6 +11,10 @@ export type Textile = {
   height: number;
   motifs: string[]; // what's in the pattern, shown under the title
 };
+
+/** Image description, e.g. "Koi Pond — hand-painted textile print by Mark, an Iloilo artist: koi, lotus, ripples". */
+export const textileAlt = (t: Textile) =>
+  `${t.title} — hand-painted textile print by ${site.artist}, an Iloilo artist: ${t.motifs.join(", ").toLowerCase()}`;
 
 export const textiles: Textile[] = [
   {

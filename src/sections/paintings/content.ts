@@ -2,6 +2,8 @@
 // To add real artwork, drop a scan/photo into /public/art and point `src` at it
 // (set width/height to the image's real pixel size so it isn't stretched).
 
+import { site } from "@/data/site";
+
 export const categories = ["Cities", "Nature", "Seas"] as const;
 
 export type Painting = {
@@ -17,6 +19,10 @@ export type Painting = {
   story: string;
 };
 
+/** Image description for search engines and screen readers, e.g. "The Teacup Sea — ink & watercolour on paper by Mark, an Iloilo artist". */
+export const paintingAlt = (p: Painting) =>
+  `${p.title} — ${p.medium.toLowerCase()} by ${site.artist}, an Iloilo artist`;
+
 // TODO: confirm titles, stories, medium and sizes with Mark.
 export const paintings: Painting[] = [
   {
@@ -26,7 +32,7 @@ export const paintings: Painting[] = [
     medium: "Ink & watercolour on paper",
     size: "A3",
     category: "Seas",
-    src: "/art/paintings/1.jpg",
+    src: "/art/paintings/the-teacup-sea.jpg",
     width: 1440,
     height: 1920,
     story: "Little ships, a pink fish the size of a whale, and a teapot lighthouse keeping watch over the waves.",
@@ -38,7 +44,7 @@ export const paintings: Painting[] = [
     medium: "Ink & watercolour on paper",
     size: "A3",
     category: "Nature",
-    src: "/art/paintings/2.jpg",
+    src: "/art/paintings/the-flower-stag.jpg",
     width: 1536,
     height: 2048,
     story:
@@ -51,7 +57,7 @@ export const paintings: Painting[] = [
     medium: "Ink & watercolour on paper",
     size: "A3",
     category: "Nature",
-    src: "/art/paintings/3.jpg",
+    src: "/art/paintings/where-the-ice-cream-grows.jpg",
     width: 1536,
     height: 2048,
     story: "A summer sky where cones sprout gardens, herons drift by, and the clouds taste faintly of strawberry.",
@@ -63,7 +69,7 @@ export const paintings: Painting[] = [
     medium: "Ink & watercolour on paper",
     size: "A3",
     category: "Cities",
-    src: "/art/paintings/4.jpg",
+    src: "/art/paintings/twilight-at-the-theatre.jpg",
     width: 1920,
     height: 2560,
     story: "Lanterns in the trees, a bow beneath the streetlamp, and the last show of the night about to begin.",
@@ -75,7 +81,7 @@ export const paintings: Painting[] = [
     medium: "Ink & watercolour on paper",
     size: "A3",
     category: "Cities",
-    src: "/art/paintings/5.jpg",
+    src: "/art/paintings/hopscotch-lane.jpg",
     width: 1920,
     height: 1493,
     story:
@@ -88,7 +94,7 @@ export const paintings: Painting[] = [
     medium: "Ink & watercolour on paper",
     size: "A3",
     category: "Cities",
-    src: "/art/paintings/6.jpg",
+    src: "/art/paintings/airships-over-the-old-town.jpg",
     width: 1440,
     height: 1920,
     story: "Crooked rooftops, a golden moon, and airships humming low over the old town after dark.",
@@ -100,7 +106,7 @@ export const paintings: Painting[] = [
     medium: "Ink & watercolour on paper",
     size: "A3",
     category: "Nature",
-    src: "/art/paintings/7.jpg",
+    src: "/art/paintings/the-jellyfish-garden.jpg",
     width: 1440,
     height: 1920,
     story: "Where the sea meets the jungle, jellyfish float between the blossoms and the herons don't mind at all.",
@@ -112,7 +118,7 @@ export const paintings: Painting[] = [
     medium: "Ink & watercolour on paper",
     size: "A3",
     category: "Nature",
-    src: "/art/paintings/8.JPG",
+    src: "/art/paintings/the-lady-of-the-hibiscus.jpg",
     width: 1687,
     height: 2048,
     story: "She waits in a garden of hibiscus and birds, holding her red hat like a secret she's about to share.",
@@ -124,7 +130,7 @@ export const paintings: Painting[] = [
     medium: "Ink & watercolour on paper",
     size: "A3",
     category: "Seas",
-    src: "/art/paintings/9.JPG",
+    src: "/art/paintings/the-lighthouse-and-the-whale.jpg",
     width: 1536,
     height: 2048,
     story:

@@ -29,34 +29,33 @@ const cedarville = Cedarville_Cursive({
   weight: "400",
 });
 
-const title = `Flying Treehouse`;
-const description =
-  "Original ink and watercolour, acrylic and oil paintings by Mark, an Ilonggo artist in Iloilo City, Philippines. Postcards at Molo Mansion, and commissions open.";
+// The homepage title and description lead with what people search for: an artist in Iloilo.
+const title = `${site.artist} — Iloilo Artist · Paintings, Postcards & Commissions | Flying Treehouse`;
+const description = `Iloilo artist ${site.artist}: original ink, watercolour, acrylic and oil paintings of Iloilo City and imaginary worlds, hand-painted textile designs, and postcards sold at Molo Mansion. Commissions open.`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: { default: title, template: `%s · Flying Treehouse` },
+  // Other pages set their own title; it's shown as "<page title> | Flying Treehouse".
+  title: { default: title, template: "%s | Flying Treehouse" },
   description,
-  keywords: [
-    "Iloilo artist",
-    "Ilonggo artist",
-    "watercolour paintings Philippines",
-    "ink and watercolor art",
-    "art commissions Iloilo",
-    "Molo Mansion postcards",
-    "Iloilo postcards",
-  ],
-  authors: [{ name: site.fullName }],
+  applicationName: "Flying Treehouse",
+  authors: [{ name: site.fullName, url: siteUrl }],
+  creator: site.fullName,
+  category: "art",
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     locale: "en_PH",
     url: "/",
-    siteName: `Flying Treehouse · art by ${site.artist}`,
+    siteName: "Flying Treehouse",
     title,
     description,
   },
   twitter: { card: "summary_large_image", title, description },
+  // Google Search Console: set NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION to the code from its "HTML tag" method.
+  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+    ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
+    : undefined,
 };
 
 export const viewport: Viewport = {
@@ -68,7 +67,7 @@ const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="en"
+      lang="en-PH"
       className={`${cormorant.variable} ${garamond.variable} ${cinzel.variable} ${cedarville.variable} antialiased`}
     >
       {/* Google Tag Manager — only when the container ID is set (see .env.example) */}

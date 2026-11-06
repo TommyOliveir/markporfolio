@@ -143,23 +143,17 @@ export default function Hero() {
         style={{ y: textY, opacity: fade }}
         className="relative z-10 mx-auto flex w-full max-w-4xl flex-col items-center px-4 pt-[9.25rem] pb-10 text-center sm:pt-[15svh] [@media(max-height:500px)]:pt-28"
       >
-        <motion.p
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 1 }}
-          className="caps text-[0.62rem] tracking-[0.15em] text-gold-soft sm:text-[0.72rem] sm:tracking-[0.22em]"
-        >
-          Flying Treehouse &nbsp;·&nbsp; Iloilo City
-        </motion.p>
-
-        <motion.h1
-          initial={{ opacity: 0, y: 24, filter: "blur(8px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          transition={{ delay: 0.35, duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
-          className="font-display mt-3 text-[clamp(5rem,17vw,11rem)] leading-[0.9] font-medium tracking-tight"
-        >
-          {site.artist}
-        </motion.h1>
+        {/* One heading for search engines and screen readers: "Flying Treehouse · Iloilo City — Mark".
+            Each line keeps its own look; entrances are CSS (animate-rise) so the text shows without waiting for JS. */}
+        <h1 className="flex flex-col items-center">
+          <span className="caps block animate-rise text-[0.62rem] [animation-delay:0.2s] motion-reduce:animate-none tracking-[0.15em] text-gold-soft sm:text-[0.72rem] sm:tracking-[0.22em]">
+            Flying Treehouse &nbsp;·&nbsp; Iloilo City
+          </span>
+          <span className="sr-only"> — </span>
+          <span className="font-display mt-3 block animate-rise-blur [animation-delay:0.35s] motion-reduce:animate-none text-[clamp(5rem,17vw,11rem)] leading-[0.9] font-medium tracking-tight">
+            {site.artist}
+          </span>
+        </h1>
 
         <svg viewBox="0 0 320 30" className="-mt-1 w-56 text-gold sm:w-72" fill="none" aria-hidden>
           <motion.path
@@ -173,28 +167,18 @@ export default function Hero() {
           />
         </svg>
 
-        <motion.p
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1, duration: 1 }}
-          className="mt-5 max-w-[21rem] text-xl text-pretty italic text-paper/80 sm:max-w-[22rem] sm:text-[1.4rem]"
-        >
+        <p className="mt-5 animate-rise [animation-delay:1s] motion-reduce:animate-none max-w-[21rem] text-xl text-pretty italic text-paper/80 sm:max-w-[22rem] sm:text-[1.4rem]">
           {site.tagline}
-        </motion.p>
+        </p>
 
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.3, duration: 1 }}
-          className="mt-9 flex flex-wrap items-center justify-center gap-4"
-        >
+        <div className="mt-9 flex animate-rise [animation-delay:1.3s] motion-reduce:animate-none flex-wrap items-center justify-center gap-4">
           <a href={href(sections.paintings)} className="btn btn-gold">
             Enter the gallery
           </a>
           <a href={href(sections.commission)} className="btn btn-line-light">
             Commission a piece
           </a>
-        </motion.div>
+        </div>
       </motion.div>
 
       {/* the town, drawn in */}

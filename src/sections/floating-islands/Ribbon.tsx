@@ -1,8 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { motion } from "motion/react";
-import { Fragment, useSyncExternalStore } from "react";
+import { motion, useInView } from "motion/react";
+import { Fragment, useRef, useSyncExternalStore } from "react";
 import { site } from "@/data/site";
 import { CompassStar } from "@/components/ui/Ornaments";
 
@@ -62,6 +62,10 @@ export default function Ribbon() {
     () => window.matchMedia(reduceMotion).matches,
     () => false,
   );
+  // The 3D library is large and building the islands is heavy work, so it only starts loading once the
+  // band starts scrolling into view — the first screen (the hero) loads and responds without it.
+  const band = useRef<HTMLDivElement>(null);
+  const near = useInView(band, { once: true, margin: "0px 0px -40px 0px" });
 
   return (
     <div className={`relative overflow-hidden ${reduced ? "border-y border-ink/15 py-1" : ""}`}>
@@ -70,7 +74,7 @@ export default function Ribbon() {
       ) : (
         // A dawn sky: picks up the hero's night blue at the top and melts into the gallery's cream below.
         <div className="bg-[linear-gradient(to_bottom,#0e1834_0%,#3b3566_20%,#b9868f_42%,#f0c8a6_60%,#f5efe3_88%)]">
-          <RibbonScene />
+          <div ref={band}>{near ? <RibbonScene /> : <div className="h-80 w-full sm:h-[30rem]" aria-hidden />}</div>
           <p className="sr-only">{[...offerings, ...subjects].join(", ")}</p>
           <p className="flex flex-wrap items-baseline justify-center gap-x-3 px-4 pb-5 text-center" aria-hidden>
             <span className="font-script text-xl text-ink-soft sm:text-2xl">

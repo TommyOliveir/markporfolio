@@ -3,8 +3,7 @@
 import Image from "next/image";
 import { motion } from "motion/react";
 import { useState } from "react";
-import { site } from "@/data/site";
-import { textiles, type Textile } from "./content";
+import { textileAlt, textiles, type Textile } from "./content";
 import ImageLightbox, { type LightboxItem } from "@/components/ui/ImageLightbox";
 import Reveal from "@/components/ui/Reveal";
 import SectionHeading from "@/components/ui/SectionHeading";
@@ -74,7 +73,7 @@ function Swatch({ textile: t, tilt, onOpen }: { textile: Textile; tilt: number; 
           <div className="relative aspect-[3/4] overflow-hidden" style={{ clipPath: pinked }}>
             <Image
               src={t.src}
-              alt={`${t.title} textile print by ${site.artist}`}
+              alt={textileAlt(t)}
               fill
               sizes={swatchSizes}
               className="object-cover transition-transform duration-700 group-hover:scale-105"
@@ -101,7 +100,7 @@ const zoomItems: LightboxItem[] = textiles.map((t) => ({
   src: t.src,
   width: t.width,
   height: t.height,
-  alt: `${t.title} textile print by ${site.artist}`,
+  alt: textileAlt(t),
   thumbSizes: swatchSizes,
   title: t.title,
   subtitle: t.motifs.join(" · "),

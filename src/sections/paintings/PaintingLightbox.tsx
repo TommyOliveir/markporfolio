@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect } from "react";
-import { paintings } from "./content";
-import { href, sections } from "@/sections/sections";
+import { paintingAlt, paintings } from "./content";
+import { href, pages, sections } from "@/sections/sections";
 
 // A painting shown large with its story, year, medium and size; arrow keys and buttons step through them.
 export default function PaintingLightbox({
@@ -66,7 +67,7 @@ export default function PaintingLightbox({
             <div className="print self-start p-3">
               <Image
                 src={p.src}
-                alt={p.title}
+                alt={paintingAlt(p)}
                 width={p.width}
                 height={p.height}
                 sizes="(min-width: 768px) 60vw, 100vw"
@@ -94,6 +95,12 @@ export default function PaintingLightbox({
               <a href={href(sections.commission)} onClick={close} className="btn btn-ink mt-8">
                 Commission something like this
               </a>
+              <Link
+                href={pages.painting(p.slug)}
+                className="caps ink-link mt-5 self-start pb-1 text-[0.68rem] text-ink-soft hover:text-ink"
+              >
+                Open this painting&apos;s page →
+              </Link>
               <div className="mt-6 flex justify-between gap-3">
                 <button onClick={() => step(-1)} className="caps ink-link pb-1 text-ink-soft hover:text-ink">
                   ← Previous

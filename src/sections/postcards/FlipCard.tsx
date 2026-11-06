@@ -4,7 +4,7 @@ import Image from "next/image";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { site } from "@/data/site";
-import { type Postcard } from "./content";
+import { postcardAlt, type Postcard } from "./content";
 
 // A postcard you can turn over: the artwork on the front, a handwritten note and stamp on the back.
 export default function FlipCard({ card, tilt }: { card: Postcard; tilt: number }) {
@@ -35,7 +35,7 @@ export default function FlipCard({ card, tilt }: { card: Postcard; tilt: number 
             <div className="relative size-full overflow-hidden">
               <Image
                 src={card.src}
-                alt={card.title}
+                alt={postcardAlt(card)}
                 fill
                 sizes="(min-width: 1024px) 360px, (min-width: 640px) calc(50vw - 3rem), calc(100vw - 2rem)"
                 className="object-cover"

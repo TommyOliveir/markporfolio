@@ -35,6 +35,9 @@
 
   --animate-twinkle: twinkle 4s ease-in-out infinite;
   --animate-drift: drift 14s ease-in-out infinite;
+  /* Hero entrance: pure CSS so the text appears as soon as the page paints, without waiting for JavaScript. */
+  --animate-rise: rise 1s ease-out both;
+  --animate-rise-blur: rise-blur 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
   @keyframes twinkle {
     0%,
     100% {
@@ -42,6 +45,19 @@
     }
     50% {
       opacity: 1;
+    }
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+  }
+  @keyframes rise-blur {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+      filter: blur(8px);
     }
   }
   @keyframes drift {

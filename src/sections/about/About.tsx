@@ -1,9 +1,10 @@
 import Image from "next/image";
+import Link from "next/link";
 import { site } from "@/data/site";
 import { CompassStar, Flourish } from "@/components/ui/Ornaments";
 import Reveal from "@/components/ui/Reveal";
 import Watercolor from "@/components/ui/Watercolor";
-import { href, sections } from "@/sections/sections";
+import { href, pages, sections } from "@/sections/sections";
 
 // Renders "**bold**" segments in otherwise-plain copy from site.ts.
 function withEmphasis(text: string) {
@@ -58,6 +59,11 @@ export default function About() {
               </li>
             ))}
           </ul>
+          <p className="mt-6 text-ink-soft">
+            <Link href={pages.iloilo.path} className="ink-link pb-0.5 text-ink hover:text-rose">
+              See Iloilo in my ink &amp; watercolour →
+            </Link>
+          </p>
           <p className="font-script mt-8 text-3xl text-ink">{site.artist}</p>
         </Reveal>
       </div>

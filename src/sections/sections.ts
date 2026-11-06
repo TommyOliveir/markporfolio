@@ -23,5 +23,14 @@ export const navSections: Section[] = [
   sections.collectors,
 ];
 
-/** In-page link to a section, e.g. `href(sections.commission)` → "#commission". */
-export const href = (section: Section) => `#${section.id}`;
+/**
+ * Link to a section: `href(sections.commission)` → "#commission" on the homepage, or
+ * `href(sections.commission, true)` → "/#commission" from another page (e.g. a painting's page).
+ */
+export const href = (section: Section, fromOtherPage = false) => `${fromOtherPage ? "/" : ""}#${section.id}`;
+
+/** Standalone pages, linked from the footer. */
+export const pages = {
+  iloilo: { path: "/iloilo", label: "Iloilo" },
+  painting: (slug: string) => `/paintings/${slug}`,
+};

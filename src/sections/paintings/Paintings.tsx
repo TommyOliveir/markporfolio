@@ -1,14 +1,15 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, useSyncExternalStore } from "react";
-import { categories, paintings } from "./content";
+import { categories, paintingAlt, paintings } from "./content";
 import SectionHeading from "@/components/ui/SectionHeading";
 import TiltCard from "@/components/ui/TiltCard";
 import Watercolor from "@/components/ui/Watercolor";
 import PaintingLightbox from "./PaintingLightbox";
-import { sections } from "@/sections/sections";
+import { pages, sections } from "@/sections/sections";
 
 const filters = ["All", ...categories] as const;
 type Filter = (typeof filters)[number];
@@ -43,7 +44,8 @@ export default function Paintings() {
       />
 
       <SectionHeading numeral="I" kicker="The Paintings" title="Cities, nature & the sea">
-        Original drawings, painted in watercolour, acrylic or oil. Select a piece to see it up close.
+        Original drawings by an Ilonggo artist, painted in watercolour, acrylic or oil. Select a piece to see it up
+        close.
       </SectionHeading>
 
       <div className="relative mb-14 flex flex-wrap justify-center gap-x-8 gap-y-3">
@@ -84,6 +86,7 @@ export default function Paintings() {
                         delay: c * 0.08 + Math.floor(i / columns) * 0.02,
                       }}
                     >
+                      {/* The picture opens the zoom view; the title below links to the painting's own page. */}
                       <button
                         onClick={() => setOpenIndex(n)}
                         className="group block w-full text-left"
@@ -93,7 +96,7 @@ export default function Paintings() {
                           <div className="print p-1.5 sm:p-4">
                             <Image
                               src={p.src}
-                              alt={p.title}
+                              alt={paintingAlt(p)}
                               width={p.width}
                               height={p.height}
                               sizes="(min-width: 1024px) 33vw, 50vw"
@@ -101,20 +104,23 @@ export default function Paintings() {
                             />
                           </div>
                         </TiltCard>
-                        <div className="mt-3 flex items-baseline gap-4 px-0.5 sm:mt-4 sm:px-1">
-                          <span className="font-display hidden text-sm text-ink-faint italic sm:inline">
-                            No. {String(n + 1).padStart(2, "0")}
-                          </span>
-                          <div className="min-w-0 flex-1 border-t border-ink/15 pt-2">
-                            <h3 className="font-display text-base leading-tight font-medium transition-colors group-hover:text-rose sm:text-2xl">
-                              {p.title}
-                            </h3>
-                            <p className="caps mt-1 text-[0.55rem] text-ink-faint sm:text-[0.62rem]">
-                              {p.category} · {p.year}
-                            </p>
-                          </div>
-                        </div>
                       </button>
+                      <Link
+                        href={pages.painting(p.slug)}
+                        className="group mt-3 flex items-baseline gap-4 px-0.5 sm:mt-4 sm:px-1"
+                      >
+                        <span className="font-display hidden text-sm text-ink-faint italic sm:inline">
+                          No. {String(n + 1).padStart(2, "0")}
+                        </span>
+                        <div className="min-w-0 flex-1 border-t border-ink/15 pt-2">
+                          <h3 className="font-display text-base leading-tight font-medium transition-colors group-hover:text-rose sm:text-2xl">
+                            {p.title}
+                          </h3>
+                          <p className="caps mt-1 text-[0.55rem] text-ink-faint sm:text-[0.62rem]">
+                            {p.category} · {p.year}
+                          </p>
+                        </div>
+                      </Link>
                     </motion.div>
                   );
                 })}

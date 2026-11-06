@@ -2,6 +2,8 @@
 // To add real artwork, drop a scan/photo into /public/art and point `src` at it
 // (set width/height to the image's real pixel size so it isn't stretched).
 
+import { site } from "@/data/site";
+
 export type Postcard = {
   slug: string;
   title: string;
@@ -12,11 +14,19 @@ export type Postcard = {
   size?: { width: number; height: number };
   /** Placeholder artwork, kept here but not shown on the site until a real scan replaces it. */
   draft?: boolean;
+  /** What the artwork shows, for search engines and screen readers. */
+  description?: string;
 };
+
+/** Image description, e.g. "Iloilo City postcard by Mark, an Iloilo artist — a collage of …". */
+export const postcardAlt = (card: Postcard) =>
+  `${card.title} postcard by ${site.artist}, an Iloilo artist${card.description ? ` — ${card.description}` : ""}`;
 
 export const postcards: Postcard[] = [
   {
     slug: "iloilo-city",
+    description:
+      "a collage of Iloilo City's heritage churches and buildings, a bowl of pancit molo, cyclists, sunflowers, hibiscus and hearts, lettered “City of Love”, “Liveable City” and “I ❤ Iloilo”",
     title: "Iloilo City",
     src: "/art/postcards/iloilo-city.jpg",
     note: "Greetings from the City of Love — every church, a bowl of pancit molo, and a bike ride home.",
@@ -79,6 +89,10 @@ export const postcardShops = [
     name: "Molo Mansion",
     address: "Yusay-Consing Mansion, 2 Locsin St Iloilo City",
     hours: "Thursday- Sunday · 2pm – 6pm",
+    // The same details in the form search engines read (see src/lib/schema.ts).
+    streetAddress: "2 Locsin St, Molo",
+    openingHours: "Th-Su 14:00-18:00",
+    geo: { latitude: 10.6965183, longitude: 122.5434615 },
     image: "/molomansion.jpg",
     imageWidth: 407,
     imageHeight: 541,
