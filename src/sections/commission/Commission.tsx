@@ -156,7 +156,10 @@ export default function Commission() {
             {site.contactEmail && (
               <p className="mt-5 text-ink-soft">
                 or write to{" "}
-                <a href={`mailto:${site.contactEmail}`} className="ink-link pb-0.5 text-ink hover:text-rose">
+                <a
+                  href={`mailto:${site.contactEmail}`}
+                  className="ink-link pb-0.5 text-ink hover:text-rose text-sky-600"
+                >
                   {site.contactEmail}
                 </a>
               </p>

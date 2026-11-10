@@ -18,7 +18,7 @@ export const site = {
   messenger: "https://m.me/markanthony.larida.3", // Messenger chat with Mark's Facebook profile; "" hides the button
   facebook: "https://www.facebook.com/markanthony.larida.3/",
   // "Email me" button in the contact card; "" hides it.
-  contactEmail: "laridatommy@gmail.com",
+  contactEmail: "marklarida9999@gmail.com",
 
   about: [
     "As an **Ilonggo artist, I have developed a style that is distinctly my own**, blending architectural precision with playful surrealism and a vivid imagination. I draw real places — cathedrals, canal houses and rooftops glimpsed from a café table — and transform them into extraordinary worlds where reality and fantasy meet. Islands float away on balloons, fish swim through the sky, and ships sail beyond the edge of the map. My work is an invitation to see familiar places differently, where the ordinary becomes unexpected and imagination knows no boundaries.",
