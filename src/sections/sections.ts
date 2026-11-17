@@ -7,6 +7,8 @@ export const sections = {
   textiles: { id: "textiles", label: "Textiles" },
   postcards: { id: "postcards", label: "Postcards" },
   whereToBuy: { id: "where-to-buy", label: "Buy postcards at Molo Mansion", short: "Buy at Molo Mansion" },
+  // the framed 3D window onto "Where's Mark?", just under the Molo Mansion card
+  findMark: { id: "find-mark", label: "Where's Mark? Find him in 3D", short: "Find Mark" },
   about: { id: "about", label: "About" },
   collectors: { id: "collectors", label: "Collectors" },
   commission: { id: "commission", label: "Commission" },
@@ -32,5 +34,6 @@ export const href = (section: Section, fromOtherPage = false) => `${fromOtherPag
 /** Standalone pages, linked from the footer. */
 export const pages = {
   iloilo: { path: "/iloilo", label: "Iloilo" },
+  findMark: { path: "/find-mark", label: "Where's Mark? (3D map)" },
   painting: (slug: string) => `/paintings/${slug}`,
 };

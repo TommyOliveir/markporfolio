@@ -14,6 +14,21 @@ const shop = {
   short: sections.whereToBuy.short, // desktop pill
 };
 
+// The 3D "Where's Mark?" window under the shop card, marked with a map pin.
+const findMark = {
+  href: href(sections.findMark),
+  label: sections.findMark.label,
+  short: sections.findMark.short,
+};
+
+function Pin({ className }: { className: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.6A2.6 2.6 0 1 1 12 6.4a2.6 2.6 0 0 1 0 5.2Z" />
+    </svg>
+  );
+}
+
 export default function Nav() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
@@ -47,7 +62,7 @@ export default function Nav() {
           light ? "text-paper" : "border-b border-ink/10 bg-paper/90 text-ink backdrop-blur-md"
         }`}
       >
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 pt-8 pb-5 sm:px-8">
+        <nav className="mx-auto flex max-w-7xl items-center justify-between gap-8 px-5 pt-8 pb-5 sm:px-8">
           {/* Site name; takes you back to the top of the homepage */}
           <a
             href={href(sections.top)}
@@ -57,23 +72,35 @@ export default function Nav() {
             Flying Treehouse
           </a>
 
-          <ul className="hidden items-center gap-6 xl:flex">
+          {/* Eight items share the bar (the bar never gets wider than 1280px), so the spacing is snug but even. */}
+          <ul className="hidden items-center gap-5 xl:flex">
             {links.map((l) => (
               <li key={l.href}>
                 <a
                   href={l.href}
-                  className="caps ink-link pb-1 text-[0.82rem] tracking-[0.16em] opacity-80 transition-opacity hover:opacity-100"
+                  className="caps ink-link pb-1 text-[0.78rem] tracking-[0.12em] whitespace-nowrap opacity-80 transition-opacity hover:opacity-100"
                 >
                   {l.label}
                 </a>
               </li>
             ))}
             <li>
+              {/* the 3D walk: marked with a map pin, on the same line as the other links */}
+              <a
+                href={findMark.href}
+                title={findMark.label}
+                className="caps ink-link group pb-1 text-[0.78rem] font-semibold tracking-[0.12em] whitespace-nowrap"
+              >
+                <Pin className="mr-1 inline-block size-[1.15em] -translate-y-px align-text-bottom text-rose transition-transform group-hover:-translate-y-0.5" />
+                {findMark.short}
+              </a>
+            </li>
+            <li>
               <a
                 href={shop.href}
                 title={shop.label}
                 // Bigger, bolder and less letter-spaced than the other nav labels so it reads at a glance.
-                className="font-caps rounded-full bg-gold px-5 py-2.5 text-[0.88rem] font-bold tracking-[0.08em] text-ink uppercase shadow-sm transition-transform hover:-translate-y-0.5"
+                className="font-caps rounded-full bg-gold px-4 py-2.5 text-[0.82rem] font-bold tracking-[0.06em] whitespace-nowrap text-ink uppercase shadow-sm transition-transform hover:-translate-y-0.5"
               >
                 {shop.short}
               </a>
@@ -81,7 +108,7 @@ export default function Nav() {
             <li>
               <a
                 href={href(sections.commission)}
-                className={`caps rounded-full border px-5 py-2.5 text-[0.82rem] transition-colors ${
+                className={`caps rounded-full border px-4 py-2.5 text-[0.78rem] whitespace-nowrap transition-colors ${
                   light
                     ? "border-paper/50 hover:bg-paper hover:text-ink"
                     : "border-ink/40 hover:bg-ink hover:text-paper"
@@ -124,6 +151,18 @@ export default function Nav() {
                   className="font-display block rounded-xl bg-gold px-4 py-3 text-2xl font-semibold text-ink italic"
                 >
                   {shop.label}
+                </a>
+              </li>
+              <li className="border-b border-ink/10 pb-3">
+                <a
+                  href={findMark.href}
+                  onClick={(e) => goTo(e, findMark.href)}
+                  className="font-display flex items-center gap-3 rounded-xl border-2 border-ink bg-card px-4 py-3 text-2xl font-semibold text-ink italic"
+                >
+                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-rose text-card">
+                    <Pin className="size-5" />
+                  </span>
+                  {findMark.label}
                 </a>
               </li>
               {[...links, { href: href(sections.commission), label: "Commission a piece" }].map((l) => (

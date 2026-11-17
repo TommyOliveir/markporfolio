@@ -25,6 +25,9 @@ export default function Footer({ fromOtherPage = false }: { fromOtherPage?: bool
           <Link href={pages.iloilo.path} className="caps ink-link pb-1 hover:text-paper">
             {pages.iloilo.label}
           </Link>
+          <Link href={pages.findMark.path} className="caps ink-link pb-1 hover:text-paper">
+            {pages.findMark.label}
+          </Link>
           {site.facebook && (
             <a
               href={site.facebook}

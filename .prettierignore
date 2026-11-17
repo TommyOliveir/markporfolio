@@ -8,6 +8,7 @@ node_modules
 package-lock.json
 next-env.d.ts
 *.tsbuildinfo
+src/sections/find-mark/molo-map.ts
 
 # Large generated artwork
 public/art

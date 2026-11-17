@@ -9,6 +9,7 @@ import { site, siteUrl } from "@/data/site";
 import { artistNode, artworkNode, businessNode, graph, ids, shopNode } from "@/lib/schema";
 import { postcardAlt, postcards, postcardShops } from "@/sections/postcards/content";
 import WhereToBuy from "@/sections/postcards/WhereToBuy";
+import FindMarkTeaser from "@/sections/find-mark/FindMarkTeaser";
 import { href, pages, sections } from "@/sections/sections";
 
 // "Iloilo in ink & watercolour": the page that answers Iloilo searches — the Iloilo City postcard,
@@ -115,6 +116,7 @@ export default function IloiloPage() {
         {/* Where to buy: Molo Mansion */}
         <section className="bg-paper-deep/60 px-4 py-16 sm:px-6">
           <WhereToBuy />
+          <FindMarkTeaser />
         </section>
 
         {/* Sketchcrawl sa Molo */}

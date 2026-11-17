@@ -39,6 +39,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
         site.sketchcrawl.image.src,
       ].map(abs),
     },
+    {
+      url: abs(pages.findMark.path),
+      lastModified,
+      changeFrequency: "yearly",
+      priority: 0.6,
+      images: [abs("/find-mark-share.jpg")],
+    },
     ...paintings.map((p) => ({
       url: abs(pages.painting(p.slug)),
       lastModified,

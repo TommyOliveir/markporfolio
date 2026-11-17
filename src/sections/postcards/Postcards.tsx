@@ -3,6 +3,7 @@
 import { postcards, type Postcard } from "./content";
 import FlipCard from "./FlipCard";
 import WhereToBuy from "./WhereToBuy";
+import FindMarkTeaser from "@/sections/find-mark/FindMarkTeaser";
 import Reveal from "@/components/ui/Reveal";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Watercolor from "@/components/ui/Watercolor";
@@ -55,6 +56,7 @@ export default function Postcards() {
       </div>
 
       <WhereToBuy />
+      <FindMarkTeaser />
     </section>
   );
 }
