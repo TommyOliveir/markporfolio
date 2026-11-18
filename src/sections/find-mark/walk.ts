@@ -20,7 +20,7 @@ import type { Game } from "./game";
 import { loadFonts } from "./labels";
 import { Life } from "./life";
 import { buildMarkCorner } from "./mark";
-import { time } from "./materials";
+import { seeThrough, time } from "./materials";
 import { Person } from "./people";
 import { SUN, buildClouds, buildSky } from "./sky";
 import { Traffic } from "./traffic";
@@ -143,6 +143,9 @@ export class Walk {
     time.value = t;
     const game = this.game;
     const { world, traffic, life, player, corner, trail, ring, confetti } = this;
+    // trees between the camera and the walker thin out so you can always see him
+    seeThrough.on.value = game.started ? 1 : 0;
+    seeThrough.target.value.set(game.x, game.y + 1.1, game.z);
 
     if (!this.readySent) {
       this.readySent = true;
@@ -263,6 +266,7 @@ export class Walk {
       game.target = null;
       game.guiding = false;
       game.trail = null;
+      game.emit({ type: "guide", on: false, to: game.guideTo });
       game.cinematic = "found";
       this.blend = 0;
       confetti.burst(MARK.x, MARK.y + 2.2, MARK.z);
@@ -358,6 +362,11 @@ export class Walk {
         else game.refreshTrail();
       }
     }
+    // the trail to the supermarket clears once you're there (the one to Mark ends when you find him)
+    if (game.guiding && game.guideTo !== "mark") {
+      const d = game.destination;
+      if (Math.hypot(d.x - game.x, d.z - game.z) < 4) game.guide(false);
+    }
     trail.update(game.guiding ? game.trail : null, t, (x, z) => world.terrain.heightAt(x, z));
 
     ring.visible = !!game.target;
@@ -372,7 +381,11 @@ export class Walk {
       for (const lm of landmarks) if (Math.hypot(lm.x - game.x, lm.z - game.z) < lm.radius) near = lm;
     if (near !== this.landmark) {
       this.landmark = near;
-      if (near) game.audio.chime();
+      if (near?.music) game.audio.playSong(near.music.src, near.music.start);
+      else {
+        game.audio.stopSong();
+        if (near) game.audio.chime();
+      }
       game.emit({ type: "landmark", landmark: near });
     }
 

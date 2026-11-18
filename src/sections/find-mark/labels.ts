@@ -29,6 +29,11 @@ function texture(canvas: HTMLCanvasElement) {
   return t;
 }
 
+/** Shops that keep their own colours instead of one from the rotation. */
+const BRAND_COLOURS: Record<string, [string, string]> = {
+  Jollibee: ["#d3121f", "#ffd400"],
+};
+
 const SIGN_COLOURS = [
   ["#1a2b52", "#f4d78f"],
   ["#b92a4f", "#fdfaf3"],
@@ -41,7 +46,7 @@ const SIGN_COLOURS = [
 /** A painted shop sign: the name in engraved caps on a coloured board. Returns the texture and its width/height ratio. */
 export function signTexture(text: string, index: number) {
   const f = fonts();
-  const [bg, fg] = SIGN_COLOURS[index % SIGN_COLOURS.length];
+  const [bg, fg] = BRAND_COLOURS[text] ?? SIGN_COLOURS[index % SIGN_COLOURS.length];
   const label = text.toUpperCase();
   const measure = document.createElement("canvas").getContext("2d")!;
   measure.font = `600 64px ${f.caps}`;

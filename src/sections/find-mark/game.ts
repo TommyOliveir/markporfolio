@@ -4,13 +4,17 @@
 
 import { Ambience } from "./audio";
 import type { Obstacles, WalkGrid } from "./collide";
-import { MARK, START, type Landmark } from "./world";
+import { MARK, START, SUPERMART, type Landmark } from "./world";
+
+/** Where "show me the way" can lead: to Mark, or to Iloilo Supermart. */
+export type GuideTo = "mark" | "supermart";
+const DESTINATIONS: Record<GuideTo, { x: number; z: number }> = { mark: MARK, supermart: SUPERMART };
 
 export type GameEvent =
   | { type: "ready" }
   | { type: "found" }
   | { type: "landmark"; landmark: Landmark | null }
-  | { type: "guide"; on: boolean }
+  | { type: "guide"; on: boolean; to: GuideTo }
   | { type: "route-failed" };
 
 export class Game {
@@ -49,6 +53,8 @@ export class Game {
   route: [number, number][] | null = null;
   /** true while "show me the way" is on: the trail to Mark stays drawn, even if you wander off it */
   guiding = false;
+  /** where the trail leads while guiding */
+  guideTo: GuideTo = "mark";
   /** the trail of glowing dots to Mark, kept up to date while guiding */
   trail: [number, number][] | null = null;
   /** where a click asked to go (for the ring on the ground) */
@@ -148,23 +154,31 @@ export class Game {
     return true;
   }
 
-  /** "Show me the way": draws the trail to Mark and walks it. */
-  guide(on = true) {
+  /** where the trail leads while guiding */
+  get destination() {
+    return DESTINATIONS[this.guideTo];
+  }
+
+  /** "Show me the way": draws the trail to Mark (or to Iloilo Supermart) and walks it. */
+  guide(on = true, to: GuideTo = "mark") {
     this.guiding = on;
+    if (on) this.guideTo = to;
     if (on) {
-      if (this.walkTo(MARK.x, MARK.z, true)) this.trail = [[this.x, this.z], ...this.route!];
+      const { x, z } = this.destination;
+      if (this.walkTo(x, z, true)) this.trail = [[this.x, this.z], ...this.route!];
       else this.guiding = false;
     } else {
       this.route = null;
       this.trail = null;
     }
-    this.emit({ type: "guide", on: this.guiding });
+    this.emit({ type: "guide", on: this.guiding, to: this.guideTo });
   }
 
   /** Re-plans the trail from wherever you are now (while guiding). */
   refreshTrail() {
     if (!this.guiding || !this.walkGrid) return;
-    const path = this.walkGrid.find(this.x, this.z, MARK.x, MARK.z);
+    const { x, z } = this.destination;
+    const path = this.walkGrid.find(this.x, this.z, x, z);
     if (path) this.trail = path;
   }
 

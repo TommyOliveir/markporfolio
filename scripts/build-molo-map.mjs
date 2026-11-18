@@ -38,6 +38,7 @@ const SIGNS = new Set([
   "Convento de Molo",
   "Bahay Pamahalaan ng Barangay Katilingban",
   "Mini-l Golf sa Mansion",
+  "Iloilo Supermart",
 ]);
 
 const kx = Math.cos((LAT0 * Math.PI) / 180) * 111320;
@@ -278,6 +279,20 @@ for (const e of data.elements) {
   }
 }
 
+// Hand-added: the Jollibee across Avanceña Street from Iloilo Supermart, and its mascot out front.
+out.buildings.unshift({
+  kind: "shop",
+  levels: 2,
+  seed: 0.314,
+  points: [-89.6, -31.2, -97.6, -27, -94.4, -20.8, -86.4, -25],
+  name: "Jollibee",
+});
+out.points.push({ kind: "mascot", at: [-97, -30.6], name: "Jollibee" });
+out.signs.push({ name: "Jollibee", at: [-92, -25.9], street: "Avanceña Street" });
+// Iloilo Supermart's sign goes on its Avanceña Street wall, looking across at the Jollibee.
+const supermart = out.signs.find((s) => s.name === "Iloilo Supermart");
+if (supermart) Object.assign(supermart, { at: [-100.2, -55], street: "Avanceña Street" });
+
 // Big areas first so smaller ones (a lawn inside the plaza) are drawn on top.
 out.areas.sort((a, b) => Math.abs(area(chunk(b.points))) - Math.abs(area(chunk(a.points))));
 function chunk(f) {
@@ -343,7 +358,7 @@ export const gates: number[] = ${json(out.gates)};
 export const points: MapPoint[] = ${lines(out.points)};
 
 /** Local shops and public buildings that get a painted sign. */
-export const signs: { name: string; at: number[] }[] = ${lines(out.signs)};
+export const signs: { name: string; at: number[]; street?: string }[] = ${lines(out.signs)};
 `;
 
 writeFileSync(OUT, ts);

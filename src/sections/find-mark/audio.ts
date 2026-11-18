@@ -9,6 +9,8 @@ export class Ambience {
   private noise: AudioBuffer | null = null;
   private birdTimer = 0;
   private muted = false;
+  private song: HTMLAudioElement | null = null;
+  private songFade = 0;
 
   /** Starts the sound (must be called from a click or key press). */
   start() {
@@ -75,6 +77,7 @@ export class Ambience {
 
   setMuted(m: boolean) {
     this.muted = m;
+    if (this.song) this.song.muted = m;
     if (this.master && this.ctx) this.master.gain.setTargetAtTime(m ? 0 : 0.8, this.ctx.currentTime, 0.1);
   }
 
@@ -195,7 +198,54 @@ export class Ambience {
     o.stop(t + 0.45);
   }
 
+  /** Plays a song file (a shop's jingle) from `start` seconds in, fading in, and looping back to `start`. */
+  playSong(src: string, start: number) {
+    if (typeof Audio === "undefined") return;
+    const song = (this.song ??= new Audio());
+    if (song.dataset.src !== src) {
+      song.dataset.src = src;
+      song.preload = "auto";
+      song.src = `${src}#t=${start}`;
+    }
+    song.onended = () => {
+      song.currentTime = start;
+      song.play().catch(() => {});
+    };
+    song.muted = this.muted;
+    song.volume = 0;
+    // seeking only works once the file's length is known
+    if (song.readyState >= 1) song.currentTime = start;
+    else song.addEventListener("loadedmetadata", () => (song.currentTime = start), { once: true });
+    song.play().catch(() => {}); // the browser may refuse before the visitor has clicked; nothing to do then
+    this.fadeSong(0.75);
+  }
+
+  /** Fades the song out and stops it. */
+  stopSong() {
+    if (!this.song || this.song.paused) return;
+    this.fadeSong(0, () => this.song?.pause());
+  }
+
+  private fadeSong(target: number, then?: () => void) {
+    const song = this.song!;
+    window.clearInterval(this.songFade);
+    const from = song.volume;
+    const steps = 20;
+    let i = 0;
+    this.songFade = window.setInterval(() => {
+      i++;
+      song.volume = Math.min(1, Math.max(0, from + ((target - from) * i) / steps));
+      if (i >= steps) {
+        window.clearInterval(this.songFade);
+        then?.();
+      }
+    }, 40);
+  }
+
   dispose() {
+    window.clearInterval(this.songFade);
+    this.song?.pause();
+    this.song = null;
     this.ctx?.close();
     this.ctx = null;
   }

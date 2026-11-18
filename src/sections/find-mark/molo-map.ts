@@ -32,6 +32,7 @@ export const churchFootprint: number[] = [33.9,-52.6,38.3,-43.6,37,-43,38.8,-39.
 export const mansionFootprint: number[] = [-83.9,47.6,-86.3,43.6,-83.4,41.9,-85.2,39.1,-76.3,33.8,-74.8,36.3,-67.3,31.7,-64.4,36.5,-63.6,36.2,-62.7,36.1,-61.8,36.1,-61,36.4,-60.2,36.9,-59.7,37.5,-59.2,38.5,-59.1,39.4,-59.3,40.3,-59.6,41.1,-60.1,41.8,-60.7,42.4,-57.4,47.7,-60.7,49.7,-59.8,51.1,-67,55.4,-69.5,51.5,-77.3,55.6,-82.7,57.5,-87.4,49.7];
 
 export const buildings: Building[] = [
+  {"kind":"shop","levels":2,"seed":0.314,"points":[-89.6,-31.2,-97.6,-27,-94.4,-20.8,-86.4,-25],"name":"Jollibee"},
   {"kind":"shop","levels":2,"seed":0.696,"points":[88.5,52.5,105.8,43.7,100.7,34,83.5,42.8],"name":"BDO"},
   {"kind":"civic","levels":2,"seed":0.47,"points":[51.3,-12.9,64.1,-19.6,74.2,-0.6,61.4,6.1],"name":"Iloilo Police Station № 4"},
   {"kind":"shop","levels":3,"seed":0.048,"points":[-108.8,-48.2,-89.7,-58,-110.8,-92.1,-134.8,-78.4,-147.7,-105.5,-125.4,-117.7,-137.1,-136.3,-167.9,-121.2,-159.7,-97,-149.7,-78.4,-158.5,-72.8,-149.6,-55.6,-120.6,-71.7],"name":"Iloilo Supermart"},
@@ -686,10 +687,11 @@ export const points: MapPoint[] = [
   {"kind":"flagpole","at":[27.6,69.2]},
   {"kind":"statue","at":[43.3,57],"name":"Doña Maria Purification Villanueva Kalaw"},
   {"kind":"fountain","at":[-49.1,30.5]},
+  {"kind":"mascot","at":[-97,-30.6],"name":"Jollibee"},
 ];
 
 /** Local shops and public buildings that get a painted sign. */
-export const signs: { name: string; at: number[] }[] = [
+export const signs: { name: string; at: number[]; street?: string }[] = [
   {"name":"Molo Post Office","at":[4.4,90.9]},
   {"name":"Café Panay","at":[-32,38.2]},
   {"name":"Coffee Stroll","at":[-72.2,68.2]},
@@ -705,4 +707,6 @@ export const signs: { name: string; at: number[] }[] = [
   {"name":"Bahay Pamahalaan ng Barangay Katilingban","at":[-10.5,90.5]},
   {"name":"Molo District Health Center","at":[-9.1,80.2]},
   {"name":"Molo Public Market","at":[-1.6,103.3]},
+  {"name":"Iloilo Supermart","at":[-100.2,-55],"street":"Avanceña Street"},
+  {"name":"Jollibee","at":[-92,-25.9],"street":"Avanceña Street"},
 ];

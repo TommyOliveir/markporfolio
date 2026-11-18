@@ -62,9 +62,14 @@ export type Landmark = {
   title: string;
   kicker: string;
   text: string;
+  /** A song that plays while you're near (and the card is open), from `start` seconds in. */
+  music?: { src: string; start: number; title: string };
 };
 
 const [churchX, churchZ] = toWorld(CHURCH, 0, 4);
+
+/** In front of Iloilo Supermart, on its Avanceña Street side. */
+export const SUPERMART = { x: -99, z: -50 };
 const [mansionX, mansionZ] = toWorld(MANSION, 0, 8);
 
 // Real places, with a line or two each, shown when the visitor walks near.
@@ -131,6 +136,16 @@ export const landmarks: Landmark[] = [
     kicker: "1926",
     title: "Molo Mansion",
     text: `The Yusay-Consing Mansion: neoclassical, with Art Deco touches, restored in 2014–15. Mark's postcards are here, ${shop.hours.replace("- ", "–")}. Up the stairs!`,
+  },
+  {
+    id: "supermart",
+    x: SUPERMART.x,
+    z: SUPERMART.z,
+    radius: 16,
+    kicker: "Avanceña Street",
+    title: "Iloilo Supermart",
+    text: "Iloilo's home-grown supermarket, with the Jollibee right across the road. You know the jingle.",
+    music: { src: encodeURI("/Iloilo Supermart Jingle Full.mp3"), start: 12, title: "the Iloilo Supermart jingle" },
   },
 ];
 

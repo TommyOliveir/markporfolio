@@ -21,7 +21,7 @@ import { nearestRoad } from "./ground";
 import { Kit } from "./kit";
 import { swayMaterial } from "./materials";
 import { areas, buildings, churchFootprint, mansionFootprint, paths, treeRows, trees as treePoints } from "./molo-map";
-import { MANSION, toWorld } from "./world";
+import { MANSION, SUPERMART, toWorld } from "./world";
 
 type Kind = "rain" | "palm" | "mango" | "bush" | "bloom";
 type Spot = { x: number; z: number; kind: Kind; scale: number; turn: number; tint: number };
@@ -245,6 +245,11 @@ export function buildTrees(obstacles: Obstacles, lite: boolean) {
     placed++;
   }
 
+  // keep the stretch of Avanceña Street between Iloilo Supermart and the Jollibee clear, so you can see
+  // the supermarket's front (filtered afterwards, so the rest of town keeps the same trees)
+  const clear = (s: Spot) => Math.hypot(s.x - SUPERMART.x, s.z - (SUPERMART.z + 8)) > 16;
+  spots.splice(0, spots.length, ...spots.filter(clear));
+
   for (const s of spots)
     obstacles.addCircle(s.x, s.z, TRUNK[s.kind] * s.scale, s.kind === "bush" || s.kind === "bloom" ? 1 : 3);
 
@@ -254,9 +259,9 @@ export function buildTrees(obstacles: Obstacles, lite: boolean) {
   const up = new Vector3(0, 1, 0);
   const c = new Color();
   const kinds: [Kind, BufferGeometry, ReturnType<typeof swayMaterial>][] = [
-    ["rain", rainTree(), swayMaterial(4, 0.012)],
-    ["mango", mangoTree(), swayMaterial(2.4, 0.016)],
-    ["palm", palmTree(), swayMaterial(3, 0.02, DoubleSide)],
+    ["rain", rainTree(), swayMaterial(4, 0.012, undefined, true)],
+    ["mango", mangoTree(), swayMaterial(2.4, 0.016, undefined, true)],
+    ["palm", palmTree(), swayMaterial(3, 0.02, DoubleSide, true)],
     ["bush", bush(null), swayMaterial(0.4, 0.03)],
     ["bloom", bush("#d9467a"), swayMaterial(0.4, 0.03)],
   ];

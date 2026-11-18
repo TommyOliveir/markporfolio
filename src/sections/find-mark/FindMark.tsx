@@ -10,7 +10,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { href, sections } from "@/sections/sections";
-import { Game } from "./game";
+import { Game, type GuideTo } from "./game";
 import Minimap from "./Minimap";
 import { useMedia, useWebGL } from "./support";
 import { directionsUrl, shop, type Landmark } from "./world";
@@ -35,7 +35,7 @@ export default function FindMark() {
   const [landmark, setLandmark] = useState<Landmark | null>(null);
   const [landmarkClosed, setLandmarkClosed] = useState(false);
   const [foundOnce, setFoundOnce] = useState(false);
-  const [guiding, setGuiding] = useState(false);
+  const [guiding, setGuiding] = useState<GuideTo | null>(null);
   const [muted, setMuted] = useState(false);
   const [help, setHelp] = useState(false);
   const [hint, setHint] = useState(true);
@@ -62,7 +62,7 @@ export default function FindMark() {
         setLandmark(e.landmark);
         setLandmarkClosed(false); // a new place (or coming back to one) shows its card again
       }
-      if (e.type === "guide") setGuiding(e.on);
+      if (e.type === "guide") setGuiding(e.on ? e.to : null);
       if (e.type === "route-failed") setNotice("Can't find a way through from here — try stepping into the open.");
     });
     return () => {
@@ -87,7 +87,7 @@ export default function FindMark() {
       const onControl = el?.closest("button, a") && (e.code === "Enter" || e.code === "Space");
       if (typing || onControl || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.code === "KeyG" && !e.repeat) {
-        game.guide(!game.guiding);
+        game.guide(!(game.guiding && game.guideTo === "mark"));
         return;
       }
       if (e.code === "Escape") {
@@ -351,7 +351,10 @@ export default function FindMark() {
             >
               <button
                 type="button"
-                onClick={() => setLandmarkClosed(true)}
+                onClick={() => {
+                  setLandmarkClosed(true);
+                  game.audio.stopSong(); // closing the card turns its music off too
+                }}
                 onPointerDown={(e) => e.stopPropagation()}
                 aria-label={`Close the card about ${landmark.title}`}
                 title="Close"
@@ -374,6 +377,14 @@ export default function FindMark() {
                 {landmark.title}
               </p>
               <p className="mt-1 text-sm leading-snug text-ink-soft sm:mt-1.5 sm:text-base">{landmark.text}</p>
+              {landmark.music && (
+                <p className="mt-2 flex items-center gap-1.5 text-xs text-rose-ink sm:text-sm">
+                  <span aria-hidden className={reduced ? "" : "animate-pulse"}>
+                    ♪
+                  </span>
+                  {muted ? `Turn the sound on to hear ${landmark.music.title}.` : `Now playing ${landmark.music.title}.`}
+                </p>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -420,14 +431,26 @@ export default function FindMark() {
             </AnimatePresence>
             <button
               type="button"
-              onClick={() => game.guide(!guiding)}
-              className={`btn ${guiding ? "btn-ink" : "btn-gold"} px-4 whitespace-nowrap shadow-lg sm:px-[1.6rem]`}
+              onClick={() => game.guide(guiding !== "mark")}
+              className={`btn ${guiding === "mark" ? "btn-ink" : "btn-gold"} px-4 whitespace-nowrap shadow-lg sm:px-[1.6rem]`}
             >
               <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
                 <path d="M12 21s-6-5.3-6-11a6 6 0 0 1 12 0c0 5.7-6 11-6 11Z" />
                 <circle cx="12" cy="10" r="2.2" />
               </svg>
-              {guiding ? "Hide the trail" : "Show me the way"}
+              {guiding === "mark" ? "Hide the trail" : "Show me the way"}
+            </button>
+            <button
+              type="button"
+              onClick={() => game.guide(guiding !== "supermart", "supermart")}
+              className={`btn ${guiding === "supermart" ? "btn-ink" : "btn-line bg-card/90 backdrop-blur-sm"} px-4 whitespace-nowrap shadow-lg sm:px-[1.6rem]`}
+            >
+              <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <path d="M3 4h2l2.4 10.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6.2" />
+                <circle cx="9.5" cy="19" r="1.4" />
+                <circle cx="17" cy="19" r="1.4" />
+              </svg>
+              {guiding === "supermart" ? "Hide the trail" : "Go to Iloilo Supermart"}
             </button>
           </div>
         )}

@@ -3,10 +3,16 @@
 // rather than flat, plus a few patterns drawn in the shader: windows and shutters on every building,
 // brick and slab paving, and lane markings on the roads.
 
-import { Color, DoubleSide, MeshLambertMaterial, type WebGLProgramParametersWithUniforms } from "three";
+import { Color, DoubleSide, MeshLambertMaterial, Vector3, type WebGLProgramParametersWithUniforms } from "three";
 
 /** One clock shared by every material that moves (trees in the wind, water, flags). */
 export const time = { value: 0 };
+
+/**
+ * Where the walker is, so trees between the camera and him can thin out and let you see him.
+ * `on` is 0 or 1; the scene updates both every frame.
+ */
+export const seeThrough = { target: { value: new Vector3() }, on: { value: 0 } };
 
 const NOISE = /* glsl */ `
 float fmHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -204,12 +210,12 @@ export function groundMaterial() {
  * Foliage that moves in the breeze: everything above `from` metres sways, more the higher it is.
  * Works on instanced meshes (each instance gets its own phase).
  */
-export function swayMaterial(from = 0.8, amount = 0.035, side?: typeof DoubleSide) {
+export function swayMaterial(from = 0.8, amount = 0.035, side?: typeof DoubleSide, see = false) {
   const m = new MeshLambertMaterial({ vertexColors: true, ...(side ? { side } : {}) });
   m.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = time;
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nuniform float uTime;")
+      .replace("#include <common>", `#include <common>\nuniform float uTime;${see ? "\nvarying vec3 vSeeWorld;" : ""}`)
       .replace(
         "#include <begin_vertex>",
         /* glsl */ `
@@ -223,12 +229,52 @@ export function swayMaterial(from = 0.8, amount = 0.035, side?: typeof DoubleSid
         float gust = 0.6 + 0.4 * sin(uTime * 0.37 + swayAt.x * 0.02);
         transformed.x += sin(swayT) * ${amount.toFixed(3)} * swayH * gust;
         transformed.z += cos(swayT * 0.83 + 1.3) * ${amount.toFixed(3)} * 0.7 * swayH * gust;
+        ${see ? SEE_VERTEX : ""}
       `,
       );
+    if (see) {
+      shader.uniforms.uSeeTarget = seeThrough.target;
+      shader.uniforms.uSeeOn = seeThrough.on;
+      shader.fragmentShader = shader.fragmentShader
+        .replace("#include <common>", `#include <common>\n${SEE_FRAGMENT_HEAD}`)
+        .replace("#include <clipping_planes_fragment>", `#include <clipping_planes_fragment>\n${SEE_FRAGMENT}`);
+    }
   };
-  m.customProgramCacheKey = () => `sway-${from}-${amount}-${side ?? 0}`;
+  m.customProgramCacheKey = () => `sway-${from}-${amount}-${side ?? 0}-${see ? 1 : 0}`;
   return m;
 }
+
+// See-through trees: the fragment's world position, then, in the fragment shader, a soft tube from the
+// camera to the walker. Anything inside the tube and in front of him is dithered away (a screen-door
+// fade, so no sorting trouble with real transparency), leaving a light lacy outline of the leaves.
+const SEE_VERTEX = /* glsl */ `
+  vec4 seeWorld = vec4(transformed, 1.0);
+  #ifdef USE_INSTANCING
+    seeWorld = instanceMatrix * seeWorld;
+  #endif
+  vSeeWorld = (modelMatrix * seeWorld).xyz;
+`;
+const SEE_FRAGMENT_HEAD = /* glsl */ `
+  uniform vec3 uSeeTarget;
+  uniform float uSeeOn;
+  varying vec3 vSeeWorld;
+`;
+const SEE_FRAGMENT = /* glsl */ `
+  if (uSeeOn > 0.5) {
+    vec3 seeSeg = uSeeTarget - cameraPosition;
+    float seeLen = length(seeSeg);
+    vec3 seeDir = seeSeg / max(seeLen, 0.001);
+    float seeT = dot(vSeeWorld - cameraPosition, seeDir);
+    if (seeT > 0.0 && seeT < seeLen - 0.5) {
+      float seeD = length(vSeeWorld - cameraPosition - seeDir * seeT);
+      // the tube widens towards the walker, so a whole canopy in front of him opens up
+      float seeR = mix(1.2, 3.6, clamp(seeT / seeLen, 0.0, 1.0));
+      float seeFade = (1.0 - smoothstep(seeR * 0.55, seeR, seeD)) * 0.82;
+      float seeNoise = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+      if (seeNoise < seeFade) discard;
+    }
+  }
+`;
 
 /** Hex string → [r, g, b] in linear colour, ready to write into a colour attribute. */
 export function rgb(hex: string): [number, number, number] {

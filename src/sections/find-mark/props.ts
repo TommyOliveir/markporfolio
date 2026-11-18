@@ -8,6 +8,7 @@ import {
   ConeGeometry,
   CylinderGeometry,
   SphereGeometry,
+  Quaternion,
   TorusGeometry,
   Vector3,
   type Curve,
@@ -168,6 +169,16 @@ export function buildProps(obstacles: Obstacles) {
     k.box(0.6, 0.35, 0.05, "#c9a046", { x: kx + Math.sin(ry) * 0.56, y: 1.0, z: kz + Math.cos(ry) * 0.56, ry });
     k.merge(lady(BRONZE, false), { x: kx, y: 1.9, z: kz, ry, sx: 1.1, sy: 1.1, sz: 1.1 });
     obstacles.addCircle(kx, kz, 1.3, 3);
+  }
+
+  // ---- the Jollibee mascot outside the fast-food place ---------------------------------------
+  const mascot = points.find((p) => p.kind === "mascot");
+  if (mascot) {
+    const [jx, jz] = mascot.at as Pt;
+    const road = nearestRoad(jx, jz);
+    const ry = face(jx, jz, road.px, road.pz);
+    k.merge(jollibee(), { x: jx, z: jz, ry, sx: 1.15, sy: 1.15, sz: 1.15 });
+    obstacles.addCircle(jx, jz, 0.8, 3);
   }
 
   // ---- flagpole in its ring of benches -------------------------------------------------------
@@ -385,7 +396,7 @@ export function buildProps(obstacles: Obstacles) {
   const signPlacements: SignPlacement[] = [];
   signs.forEach((s, index) => {
     const [px, pz] = s.at as Pt;
-    const placed = signOnBuilding(px, pz, s.name, index + 1);
+    const placed = signOnBuilding(px, pz, s.name, index + 1, s.street);
     if (placed) {
       signPlacements.push(placed);
       return;
@@ -463,6 +474,87 @@ function goddess(i: number) {
   k.cyl(0.045, 0.05, 0.6, MARBLE, { x: 0.24, y: 1.75, rz: -2.6 }, 6);
   k.cyl(0.045, 0.05, 0.55, MARBLE, { x: -0.2, y: 1.45, rz: 0.15 }, 6);
   attribute[i % attribute.length]();
+  return k;
+}
+
+/** A rounded limb from one point to another, with a ball at each joint. */
+function limb(k: Kit, a: [number, number, number], b: [number, number, number], r: number, color: string) {
+  const A = new Vector3(...a);
+  const B = new Vector3(...b);
+  const dir = B.clone().sub(A);
+  const geo = new CylinderGeometry(r, r, dir.length(), 10);
+  geo.applyQuaternion(new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), dir.normalize()));
+  geo.translate((A.x + B.x) / 2, (A.y + B.y) / 2, (A.z + B.z) / 2);
+  k.add(geo, color);
+  k.ball(r, color, { x: A.x, y: A.y, z: A.z }, 10, 6);
+  k.ball(r, color, { x: B.x, y: B.y, z: B.z }, 10, 6);
+}
+
+/** A white cartoon glove: a round palm, a cuff, and a thumb pointing up. */
+function glove(k: Kit, x: number, y: number, z: number) {
+  k.ball(1, "#ffffff", { x, y, z, sx: 0.075, sy: 0.065, sz: 0.06 }, 10, 8);
+  k.cyl(0.025, 0.025, 0.07, "#ffffff", { x, y: y + 0.03, z: z + 0.02 }, 6);
+}
+
+/**
+ * The Jollibee welcome statue: a red bee in a red tuxedo jacket with a white shirt front and black bow
+ * tie, a round red belly with two yellow stripes, big yellow shoes, a peach face with rosy cheeks, red
+ * antennae and a white chef's hat, one arm waving people in, on a wavy blue base. About 2 m tall, facing +z.
+ */
+function jollibee() {
+  const RED = "#d3121f";
+  const YELLOW = "#ffd400";
+  const WHITE = "#ffffff";
+  const k = new Kit();
+  // wavy blue base
+  k.add(new CylinderGeometry(0.5, 0.52, 0.09, 20).scale(1.25, 1, 0.9).translate(0, 0.045, 0), "#1d8fbf");
+  k.add(new CylinderGeometry(0.25, 0.27, 0.09, 14).translate(0.42, 0.045, 0.22), "#1d8fbf");
+  k.add(new CylinderGeometry(0.22, 0.24, 0.09, 14).translate(-0.45, 0.045, -0.18), "#1d8fbf");
+  // big yellow shoes, turned out a little
+  for (const sx of [-1, 1]) {
+    k.ball(1, YELLOW, { x: sx * 0.24, y: 0.17, z: 0.08, ry: sx * 0.35, sx: 0.15, sy: 0.1, sz: 0.24 }, 14, 10);
+    k.cyl(0.08, 0.09, 0.08, YELLOW, { x: sx * 0.2, y: 0.2, z: 0.01 }, 10);
+    limb(k, [sx * 0.2, 0.26, 0.01], [sx * 0.14, 0.62, 0], 0.075, RED); // legs
+  }
+  // round red belly with two yellow stripes
+  k.ball(1, RED, { y: 0.84, sx: 0.36, sy: 0.32, sz: 0.32 }, 20, 14);
+  k.add(new CylinderGeometry(0.372, 0.372, 0.07, 24).scale(1, 1, 0.89), YELLOW, { y: 0.93 });
+  k.add(new CylinderGeometry(0.32, 0.29, 0.06, 24).scale(1, 1, 0.89), YELLOW, { y: 0.66 });
+  // red jacket, white shirt front with buttons, black bow tie
+  k.ball(1, RED, { y: 1.22, sx: 0.29, sy: 0.27, sz: 0.25 }, 18, 12);
+  k.box(0.13, 0.3, 0.05, WHITE, { y: 1.07, z: 0.225, rx: -0.12 });
+  for (const by of [1.13, 1.21]) k.ball(0.012, "#d9d9d9", { y: by, z: 0.26 }, 6, 4);
+  k.add(new ConeGeometry(0.05, 0.11, 4).rotateZ(Math.PI / 2), "#151515", { x: 0.05, y: 1.4, z: 0.2 });
+  k.add(new ConeGeometry(0.05, 0.11, 4).rotateZ(-Math.PI / 2), "#151515", { x: -0.05, y: 1.4, z: 0.2 });
+  k.ball(0.025, "#151515", { y: 1.4, z: 0.22 }, 6, 4);
+  // little wings behind
+  for (const sx of [-1, 1])
+    k.ball(1, "#eef2f5", { x: sx * 0.2, y: 1.42, z: -0.24, rz: sx * -0.6, sx: 0.2, sy: 0.12, sz: 0.02 }, 12, 8);
+  // arms: one waving people in, one with a thumbs-up at the chest
+  limb(k, [0.26, 1.34, 0], [0.45, 1.44, 0.04], 0.07, RED);
+  limb(k, [0.45, 1.44, 0.04], [0.6, 1.56, 0.12], 0.065, RED);
+  k.cyl(0.06, 0.06, 0.05, WHITE, { x: 0.62, y: 1.57, z: 0.13, rz: -0.9 }, 10);
+  glove(k, 0.67, 1.61, 0.15);
+  limb(k, [-0.26, 1.33, 0], [-0.36, 1.1, 0.06], 0.07, RED);
+  limb(k, [-0.36, 1.1, 0.06], [-0.2, 1.13, 0.27], 0.065, RED);
+  glove(k, -0.15, 1.15, 0.31);
+  // red head, with the peach face set into the front
+  k.ball(1, RED, { y: 1.74, sx: 0.33, sy: 0.31, sz: 0.31 }, 20, 14);
+  k.ball(1, "#f8cfa4", { y: 1.68, z: 0.12, sx: 0.27, sy: 0.24, sz: 0.25 }, 20, 14);
+  for (const sx of [-1, 1]) {
+    k.ball(1, "#f2948a", { x: sx * 0.17, y: 1.61, z: 0.3, sx: 0.06, sy: 0.045, sz: 0.03 }, 10, 6); // cheeks
+    k.ball(1, WHITE, { x: sx * 0.09, y: 1.78, z: 0.32, sx: 0.07, sy: 0.09, sz: 0.05 }, 12, 8); // eyes
+    k.ball(1, "#111111", { x: sx * 0.08, y: 1.77, z: 0.36, sx: 0.045, sy: 0.062, sz: 0.025 }, 10, 6);
+    k.ball(0.012, WHITE, { x: sx * 0.08 + 0.015, y: 1.8, z: 0.385 }, 6, 4); // glint
+    limb(k, [sx * 0.11, 1.98, 0.08], [sx * 0.19, 2.19, 0.2], 0.018, RED); // antennae
+    k.ball(0.035, RED, { x: sx * 0.19, y: 2.19, z: 0.2 }, 8, 6);
+  }
+  // the big smile, with a red tongue
+  k.add(new TorusGeometry(0.075, 0.016, 6, 14, Math.PI).rotateZ(Math.PI), "#7a1018", { y: 1.62, z: 0.36 });
+  k.ball(1, "#e8323c", { y: 1.57, z: 0.355, sx: 0.04, sy: 0.02, sz: 0.012 }, 8, 6);
+  // white chef's hat
+  k.cyl(0.2, 0.19, 0.1, WHITE, { y: 1.97, z: -0.02, rx: -0.12 }, 18);
+  k.ball(1, WHITE, { y: 2.12, z: -0.04, sx: 0.27, sy: 0.12, sz: 0.24 }, 18, 10);
   return k;
 }
 
@@ -623,7 +715,8 @@ function rect(x: number, z: number, ry: number, hw: number, hd: number) {
 }
 
 /** Hangs a shop's sign on the wall of its building that faces the street. */
-function signOnBuilding(px: number, pz: number, name: string, index: number): SignPlacement | null {
+/** Hangs a sign on the wall of the building at (px, pz) that faces the street, or `street` if one is named. */
+function signOnBuilding(px: number, pz: number, name: string, index: number, street?: string): SignPlacement | null {
   let best: { b: (typeof buildings)[number]; d: number } | null = null;
   for (const b of buildings) {
     if (b.kind === "canopy") continue;
@@ -667,6 +760,7 @@ function signOnBuilding(px: number, pz: number, name: string, index: number): Si
     const mx = (ax + bx) / 2;
     const mz = (az + bz) / 2;
     const road = nearestRoad(mx + nx * 2, mz + nz * 2);
+    if (street && road.name !== street) continue;
     const score = road.d - len * 0.1 + Math.hypot(mx - px, mz - pz) * 0.2;
     if (!pick || score < pick.score) pick = { mx, mz, nx, nz, len, score, ux, uz };
   }
