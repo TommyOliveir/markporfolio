@@ -1,6 +1,7 @@
 import BackToTop from "@/components/layout/BackToTop";
 import Footer from "@/components/layout/Footer";
 import Nav from "@/components/layout/Nav";
+import HashScroll from "@/components/layout/HashScroll";
 // The landing page's sections, in page order.
 import Hero from "@/sections/hero/Hero";
 import Ribbon from "@/sections/floating-islands/Ribbon";
@@ -39,6 +40,7 @@ export default function Home() {
     <>
       <JsonLd data={structuredData} />
       <Nav />
+      <HashScroll />
       <main>
         <Hero />
         <Ribbon />
