@@ -382,7 +382,9 @@ export default function FindMark() {
                   <span aria-hidden className={reduced ? "" : "animate-pulse"}>
                     ♪
                   </span>
-                  {muted ? `Turn the sound on to hear ${landmark.music.title}.` : `Now playing ${landmark.music.title}.`}
+                  {muted
+                    ? `Turn the sound on to hear ${landmark.music.title}.`
+                    : `Now playing ${landmark.music.title}.`}
                 </p>
               )}
             </motion.div>
@@ -391,7 +393,9 @@ export default function FindMark() {
       </div>
 
       {/* bottom: notices, the map credit, hints, the "show me the way" button */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-3 p-3 sm:p-5">
+      {/* on phones the two route buttons share a full-width row, with the notices and map credit under
+          them; from sm up the credit sits bottom left and the buttons stack bottom right */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col-reverse gap-2 p-3 sm:flex-row sm:items-end sm:justify-between sm:gap-3 sm:p-5">
         <div className="flex max-w-sm flex-col gap-2">
           <AnimatePresence>
             {notice && (
@@ -416,14 +420,14 @@ export default function FindMark() {
         </div>
 
         {started && !card && (
-          <div className="pointer-events-auto flex shrink-0 flex-col items-end gap-2">
+          <div className="pointer-events-auto flex gap-2 sm:shrink-0 sm:flex-col sm:items-end">
             <AnimatePresence>
               {hint && !touch && (
                 <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="caps hidden rounded-full bg-ink/80 px-4 py-2 text-[0.6rem] tracking-[0.14em] text-paper md:block"
+                  className="caps hidden rounded-full bg-ink/80 px-4 py-2 text-[0.6rem] tracking-[0.14em] text-paper lg:block"
                 >
                   WASD to walk · Shift to run · Space to jump · drag to look · click to walk there
                 </motion.p>
@@ -432,25 +436,43 @@ export default function FindMark() {
             <button
               type="button"
               onClick={() => game.guide(guiding !== "mark")}
-              className={`btn ${guiding === "mark" ? "btn-ink" : "btn-gold"} px-4 whitespace-nowrap shadow-lg sm:px-[1.6rem]`}
+              className={`btn ${guiding === "mark" ? "btn-ink" : "btn-gold"} px-3 text-[0.68rem] tracking-[0.12em] whitespace-nowrap shadow-lg max-sm:flex-1 max-sm:gap-2 sm:px-[1.6rem] sm:text-[0.78rem] sm:tracking-[0.2em]`}
             >
               <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
                 <path d="M12 21s-6-5.3-6-11a6 6 0 0 1 12 0c0 5.7-6 11-6 11Z" />
                 <circle cx="12" cy="10" r="2.2" />
               </svg>
-              {guiding === "mark" ? "Hide the trail" : "Show me the way"}
+              {guiding === "mark" ? (
+                <>
+                  Hide <span className="hidden sm:inline">the</span> trail
+                </>
+              ) : (
+                <>
+                  <span className="sm:hidden">Way to Mark</span>
+                  <span className="hidden sm:inline">Show me the way</span>
+                </>
+              )}
             </button>
             <button
               type="button"
               onClick={() => game.guide(guiding !== "supermart", "supermart")}
-              className={`btn ${guiding === "supermart" ? "btn-ink" : "btn-line bg-card/90 backdrop-blur-sm"} px-4 whitespace-nowrap shadow-lg sm:px-[1.6rem]`}
+              className={`btn ${guiding === "supermart" ? "btn-ink" : "btn-line bg-card/95 backdrop-blur-sm"} px-3 text-[0.68rem] tracking-[0.12em] whitespace-nowrap shadow-lg max-sm:flex-1 max-sm:gap-2 sm:px-[1.6rem] sm:text-[0.78rem] sm:tracking-[0.2em]`}
             >
               <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
                 <path d="M3 4h2l2.4 10.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6.2" />
                 <circle cx="9.5" cy="19" r="1.4" />
                 <circle cx="17" cy="19" r="1.4" />
               </svg>
-              {guiding === "supermart" ? "Hide the trail" : "Go to Iloilo Supermart"}
+              {guiding === "supermart" ? (
+                <>
+                  Hide <span className="hidden sm:inline">the</span> trail
+                </>
+              ) : (
+                <>
+                  <span className="sm:hidden">Supermart</span>
+                  <span className="hidden sm:inline">Go to Iloilo Supermart</span>
+                </>
+              )}
             </button>
           </div>
         )}
