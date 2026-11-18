@@ -72,8 +72,9 @@ export default function Ribbon() {
       {reduced ? (
         <Placard />
       ) : (
-        // A dawn sky: picks up the hero's night blue at the top and melts into the gallery's cream below.
-        <div className="bg-[linear-gradient(to_bottom,#0e1834_0%,#3b3566_20%,#b9868f_42%,#f0c8a6_60%,#f5efe3_88%)]">
+        // A dawn sky: picks up the hero's night blue at the top and fades out to nothing at the bottom, so
+        // the page's own textured paper shows through and runs on into the gallery with no seam.
+        <div className="bg-[linear-gradient(to_bottom,#0e1834_0%,#3b3566_20%,#b9868f_42%,#f0c8a6_60%,#f5efe300_90%)]">
           <div ref={band}>{near ? <RibbonScene /> : <div className="h-80 w-full sm:h-[30rem]" aria-hidden />}</div>
           <p className="sr-only">{[...offerings, ...subjects].join(", ")}</p>
           <p className="flex flex-wrap items-baseline justify-center gap-x-3 px-4 pb-5 text-center" aria-hidden>

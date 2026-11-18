@@ -35,9 +35,10 @@ export default function Paintings() {
     <section id={sections.paintings.id} data-protect className="relative px-4 pt-28 pb-28 sm:px-6">
       <Watercolor
         seed={3}
-        className="opacity-70"
+        // fade the wash in from the top, so it doesn't end in a hard line against the islands band above
+        className="opacity-70 [mask-image:linear-gradient(to_bottom,transparent,#000_16rem)]"
         blooms={[
-          { x: 4, y: 6, r: 16, color: "#f2a516", opacity: 0.18 },
+          { x: 4, y: 10, r: 16, color: "#f2a516", opacity: 0.18 },
           { x: 96, y: 30, r: 14, color: "#1b8e8e", opacity: 0.15 },
           { x: 2, y: 70, r: 12, color: "#d63c62", opacity: 0.12 },
         ]}
