@@ -25,15 +25,20 @@ type Card = "found" | null;
 // scrollable when the window is too short for them (the auto margins keep the top reachable).
 const OVERLAY =
   "absolute inset-0 z-20 flex flex-col items-center overflow-y-auto overscroll-contain bg-linear-to-t from-ink/50 via-ink/15 to-transparent p-3 sm:p-6";
-const CARD = "print mt-auto w-full max-w-lg shrink-0 rounded-2xl p-6 sm:mb-auto sm:p-9";
+const CARD = "print mt-auto w-full max-w-lg shrink-0 rounded-2xl p-5 sm:mb-auto sm:p-9";
 
 export default function FindMark() {
   const [game] = useState(() => new Game());
   const [ready, setReady] = useState(false);
   const [started, setStarted] = useState(false);
   const [card, setCard] = useState<Card>(null);
+  // phones show the "found him" card as a short sheet; this opens it up to the full details
+  const [details, setDetails] = useState(false);
   const [landmark, setLandmark] = useState<Landmark | null>(null);
   const [landmarkClosed, setLandmarkClosed] = useState(false);
+  // On phones a landmark card shows in full for a few seconds ("auto"), then shrinks to a one-line chip
+  // ("mini") so it doesn't hide the place you walked up to; tapping the chip opens it for good ("open").
+  const [landmarkView, setLandmarkView] = useState<"auto" | "mini" | "open">("auto");
   const [foundOnce, setFoundOnce] = useState(false);
   const [guiding, setGuiding] = useState<GuideTo | null>(null);
   const [muted, setMuted] = useState(false);
@@ -48,6 +53,14 @@ export default function FindMark() {
   const stickBase = useRef<HTMLDivElement>(null);
   const stickKnob = useRef<HTMLDivElement>(null);
 
+  // phones: shrink the landmark card to a chip after a few seconds, unless it was opened by hand
+  useEffect(() => {
+    if (!landmark || landmarkClosed || landmarkView !== "auto") return;
+    if (!window.matchMedia("(max-width: 639px)").matches) return;
+    const id = window.setTimeout(() => setLandmarkView("mini"), 6000);
+    return () => window.clearTimeout(id);
+  }, [landmark, landmarkClosed, landmarkView]);
+
   // news from the scene
   useEffect(() => {
     let celebrate = 0;
@@ -55,12 +68,16 @@ export default function FindMark() {
       if (e.type === "ready") setReady(true);
       if (e.type === "found") {
         setFoundOnce(true);
-        // let the camera swing round and the confetti fly before the card comes up
-        celebrate = window.setTimeout(() => setCard("found"), 1700);
+        // let the camera swing round and the confetti fly before the card comes up (a little longer on
+        // phones, where the card covers more of the view)
+        const phone = window.matchMedia("(max-width: 639px)").matches;
+        setDetails(false);
+        celebrate = window.setTimeout(() => setCard("found"), phone ? 2500 : 1700);
       }
       if (e.type === "landmark") {
         setLandmark(e.landmark);
         setLandmarkClosed(false); // a new place (or coming back to one) shows its card again
+        setLandmarkView("auto");
       }
       if (e.type === "guide") setGuiding(e.on ? e.to : null);
       if (e.type === "route-failed") setNotice("Can't find a way through from here — try stepping into the open.");
@@ -335,11 +352,50 @@ export default function FindMark() {
       </div>
 
       {/* the card for the landmark you're passing: under the top bar on phones (clear of your thumb),
-          bottom left on bigger screens. Only its close button catches clicks or touches; closing it
-          hides it until you reach the next landmark, so you can take in the view. */}
+          bottom left on bigger screens. Only its buttons catch clicks or touches; closing it hides it
+          until you reach the next landmark, so you can take in the view. On phones it shrinks to a chip
+          after a few seconds (see landmarkView). */}
       <div className="pointer-events-none absolute inset-x-3 top-48 z-10 sm:top-auto sm:right-auto sm:bottom-16 sm:left-5 sm:w-96">
         <AnimatePresence mode="wait">
-          {landmark && !landmarkClosed && (
+          {landmark && !landmarkClosed && landmarkView === "mini" && (
+            <motion.div
+              key={`${landmark.id}-mini`}
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              className="w-fit max-w-full"
+            >
+              <button
+                type="button"
+                onClick={() => setLandmarkView("open")}
+                onPointerDown={(e) => e.stopPropagation()}
+                aria-expanded={false}
+                aria-label={`Show the card about ${landmark.title}`}
+                className="pointer-events-auto flex h-11 max-w-full items-center gap-2 rounded-full bg-card/95 pr-3 pl-4 shadow-md backdrop-blur-md"
+              >
+                <span className="caps shrink-0 text-[0.55rem] text-rose-ink">{landmark.kicker}</span>
+                <span className="font-display truncate text-base font-semibold">{landmark.title}</span>
+                {landmark.music && !muted && (
+                  <span aria-hidden className={`text-rose-ink ${reduced ? "" : "animate-pulse"}`}>
+                    ♪
+                  </span>
+                )}
+                <svg
+                  viewBox="0 0 24 24"
+                  className="size-4 shrink-0 text-ink-soft"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  aria-hidden
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+            </motion.div>
+          )}
+          {landmark && !landmarkClosed && landmarkView !== "mini" && (
             <motion.div
               key={landmark.id}
               initial={{ opacity: 0, y: 16, rotate: -1 }}
@@ -550,31 +606,57 @@ export default function FindMark() {
               role="dialog"
               aria-labelledby="found-title"
             >
+              {/* On phones the card starts as a short sheet (title, hours, buttons) so Mark, the confetti and
+                  the mansion stay in view above it; "Details" opens it up to the full address and directions.
+                  From sm up the whole card shows, centred, as before. */}
               <p className="caps text-rose-ink">You found him!</p>
               <h2
                 id="found-title"
-                className="font-display mt-3 text-5xl leading-[0.95] font-semibold italic sm:text-6xl"
+                className="font-display mt-2 text-4xl leading-[0.95] font-semibold italic sm:mt-3 sm:text-6xl"
               >
                 Mark&apos;s at Molo Mansion
               </h2>
-              <p className="mt-4 text-lg leading-relaxed text-ink-soft">
-                Come and find the real thing: Mark&apos;s postcards are on sale at the mansion, in ink and watercolour,
-                printed on heavy card. Not sold online — so say hi in person.
-              </p>
-              <dl className="mt-5 grid gap-3 border-y border-ink/15 py-4 sm:grid-cols-[auto_1fr] sm:gap-x-6">
-                <dt className="caps text-[0.65rem] text-ink-faint">Where</dt>
-                <dd className="-mt-2 sm:mt-0">{shop.address}</dd>
-                <dt className="caps text-[0.65rem] text-ink-faint">When</dt>
-                <dd className="-mt-2 sm:mt-0">{hours}</dd>
-                <dt className="caps text-[0.65rem] text-ink-faint">Look for</dt>
-                <dd className="-mt-2 sm:mt-0">
-                  The cream mansion with the red dome, across Lopez Jaena Street from Molo Plaza — St. Anne&apos;s twin
-                  spires are on the far side of the square.
-                </dd>
-              </dl>
-              <button type="button" onClick={keepExploring} className="btn btn-gold mt-7" autoFocus>
-                Keep exploring
-              </button>
+              {!details && (
+                <p className="mt-3 text-base leading-snug text-ink-soft sm:hidden">
+                  Postcards on sale in person, {hours}.
+                </p>
+              )}
+              <div id="found-details" className={details ? "" : "max-sm:hidden"}>
+                <p className="mt-4 text-lg leading-relaxed text-ink-soft">
+                  Come and find the real thing: Mark&apos;s postcards are on sale at the mansion, in ink and
+                  watercolour, printed on heavy card. Not sold online — so say hi in person.
+                </p>
+                <dl className="mt-5 grid gap-3 border-y border-ink/15 py-4 sm:grid-cols-[auto_1fr] sm:gap-x-6">
+                  <dt className="caps text-[0.65rem] text-ink-faint">Where</dt>
+                  <dd className="-mt-2 sm:mt-0">{shop.address}</dd>
+                  <dt className="caps text-[0.65rem] text-ink-faint">When</dt>
+                  <dd className="-mt-2 sm:mt-0">{hours}</dd>
+                  <dt className="caps text-[0.65rem] text-ink-faint">Look for</dt>
+                  <dd className="-mt-2 sm:mt-0">
+                    The cream mansion with the red dome, across Lopez Jaena Street from Molo Plaza — St. Anne&apos;s
+                    twin spires are on the far side of the square.
+                  </dd>
+                </dl>
+              </div>
+              <div className="mt-5 flex gap-3 sm:mt-7">
+                <button
+                  type="button"
+                  onClick={() => setDetails((d) => !d)}
+                  aria-expanded={details}
+                  aria-controls="found-details"
+                  className="btn btn-line flex-1 px-3 text-[0.7rem] tracking-[0.12em] whitespace-nowrap sm:hidden"
+                >
+                  {details ? "Less" : "Details"}
+                </button>
+                <button
+                  type="button"
+                  onClick={keepExploring}
+                  className="btn btn-gold flex-1 px-3 text-[0.7rem] tracking-[0.12em] whitespace-nowrap sm:flex-none sm:px-[1.6rem] sm:text-[0.78rem] sm:tracking-[0.2em]"
+                  autoFocus
+                >
+                  Keep exploring
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
