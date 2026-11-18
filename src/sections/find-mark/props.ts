@@ -17,6 +17,7 @@ import { Obstacles, inside } from "./collide";
 import { nearestRoad } from "./ground";
 import { orientedBox } from "./buildings";
 import { Kit } from "./kit";
+import { food } from "./people";
 import { areas, benches, buildings, gates, paths, points, signs } from "./molo-map";
 import { MANSION, toWorld } from "./world";
 
@@ -418,6 +419,52 @@ export function buildProps(obstacles: Obstacles) {
     });
   });
 
+  // ---- Jollibee's outdoor tables, out front under its sign -------------------------------------
+  // Red tables with yellow stools, burgers, fries and drinks on red trays, either side of the door.
+  // The diners themselves are people (see Life), seated at the spots listed in `diners`.
+  const diners: { x: number; z: number; ry: number }[] = [];
+  const front = signPlacements.find((s) => s.name === "Jollibee");
+  if (front) {
+    const nx = Math.sin(front.ry); // out from the wall
+    const nz = Math.cos(front.ry);
+    const ux = nz; // along it
+    const uz = -nx;
+    const [mx0, mz0] = (mascot?.at as Pt | undefined) ?? [Infinity, Infinity];
+    const ry = Math.atan2(ux, uz);
+    for (const [along, out] of [
+      [-3.1, 2.2],
+      [3.1, 2.2],
+      [-1.9, 4.4],
+      [1.9, 4.4],
+    ]) {
+      const tx = front.x + ux * along + nx * out;
+      const tz = front.z + uz * along + nz * out;
+      const road = nearestRoad(tx, tz);
+      if (Math.hypot(tx - mx0, tz - mz0) < 2.3 || road.d < road.width / 2 + 1.3) continue;
+      // the table: a round red top on a yellow pedestal
+      k.cyl(0.28, 0.32, 0.03, "#2a2b2e", { x: tx, z: tz }, 16);
+      k.cyl(0.05, 0.05, 0.7, "#ffd400", { x: tx, z: tz }, 10);
+      k.cyl(0.5, 0.5, 0.04, "#d3121f", { x: tx, y: 0.7, z: tz }, 28);
+      obstacles.addCircle(tx, tz, 0.55, 0.8);
+      for (const side of [-1, 1]) {
+        // a yellow stool either side, and a tray of food in front of it
+        const sx = tx + ux * side * 0.82;
+        const sz = tz + uz * side * 0.82;
+        k.cyl(0.03, 0.03, 0.42, "#2a2b2e", { x: sx, z: sz }, 6);
+        k.cyl(0.2, 0.2, 0.05, "#ffd400", { x: sx, y: 0.4, z: sz }, 16);
+        diners.push({ x: sx, z: sz, ry: ry + (side > 0 ? Math.PI : 0) }); // facing the table
+        const px = tx + ux * side * 0.25;
+        const pz = tz + uz * side * 0.25;
+        k.box(0.3, 0.012, 0.38, "#b80f1a", { x: px, y: 0.74, z: pz, ry });
+        // a: along the wall (toward or away from the diner), b: out from it
+        const at = (a: number, b: number) => ({ x: px + ux * a + nx * b, z: pz + uz * a + nz * b, y: 0.752 });
+        k.merge(food("burger"), at(0, -0.08));
+        k.merge(food("fries"), at(side * -0.04, 0.1));
+        k.merge(food("drink"), at(side * 0.06, -0.24 * side));
+      }
+    }
+  }
+
   return {
     geometry: k.build()!,
     waters,
@@ -429,6 +476,7 @@ export function buildProps(obstacles: Obstacles) {
     welcomeSign,
     balloonSpot,
     fountain: { x: fx, z: fz },
+    diners,
   };
 }
 

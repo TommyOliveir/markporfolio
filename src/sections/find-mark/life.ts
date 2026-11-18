@@ -124,7 +124,13 @@ const up = new Vector3(0, 1, 0);
 export class Life {
   readonly group = new Group();
   private walkers: Walker[] = [];
-  private still: { person: Person; mode: "stand" | "sit" | "kid"; cx: number; cz: number; phase: number }[] = [];
+  private still: {
+    person: Person;
+    mode: "stand" | "sit" | "kid" | "eat";
+    cx: number;
+    cz: number;
+    phase: number;
+  }[] = [];
   private pigeons: Pigeon[] = [];
   private pigeonMesh: InstancedMesh;
   private birds: InstancedMesh;
@@ -145,6 +151,8 @@ export class Life {
       cart: { x: number; z: number };
       balloons: [number, number];
       gate: { x: number; z: number; facing: number };
+      /** stools at Jollibee's outdoor tables, each facing its table */
+      diners: { x: number; z: number; ry: number }[];
     },
   ) {
     const rand = this.rand;
@@ -234,6 +242,19 @@ export class Life {
       p.legL.rotation.x = p.legR.rotation.x = -1.35;
       this.still.push({ person: p, mode: "sit", cx: 0, cz: 0, phase: i });
     }
+
+    // folk at Jollibee's outdoor tables, tucking into a burger or a fry (and the odd empty stool)
+    opts.diners.forEach((d, i) => {
+      if (opts.lite && i % 2 === 1) return; // fewer on slow devices
+      if (i % 5 === 3) return; // an empty stool here and there
+      const p = new Person({ ...crowdLook(rand), umbrella: undefined, backpack: undefined }, material);
+      p.root.position.set(d.x, -0.36, d.z);
+      p.root.rotation.y = d.ry;
+      p.legL.rotation.x = p.legR.rotation.x = -1.3;
+      p.hold(i % 2 ? "fries" : "burger", material);
+      this.obstacles.addCircle(d.x, d.z, 0.35, 1.3);
+      this.still.push({ person: p, mode: "eat", cx: 0, cz: 0, phase: i * 2.3 });
+    });
 
     // kids racing round the playgrounds
     for (const a of areas.filter((g) => g.kind === "playground")) {
@@ -395,6 +416,8 @@ export class Life {
         s.person.root.position.set(x, 0, z);
         s.person.root.rotation.y = Math.atan2(-Math.sin(a), Math.cos(a));
         s.person.animate(dt, 3, t);
+      } else if (s.mode === "eat") {
+        s.person.eat(t, s.phase);
       } else if (s.mode === "stand") {
         s.person.animate(dt, 0, t + s.phase);
       }

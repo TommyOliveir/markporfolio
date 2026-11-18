@@ -13,6 +13,8 @@ const DESTINATIONS: Record<GuideTo, { x: number; z: number }> = { mark: MARK, su
 export type GameEvent =
   | { type: "ready" }
   | { type: "found" }
+  /** the intro swoop has landed behind you: the walk proper begins */
+  | { type: "intro-done" }
   | { type: "landmark"; landmark: Landmark | null }
   | { type: "guide"; on: boolean; to: GuideTo }
   | { type: "route-failed" };

@@ -174,6 +174,30 @@ export class Person {
     this.head.rotation.z = Math.sin(t * 0.8) * 0.05;
   }
 
+  /** Puts a bite to eat in the right hand. */
+  hold(kind: Food, material: Material) {
+    const k = new Kit();
+    k.merge(food(kind), { y: -0.66, z: 0.02, rx: Math.PI / 2 });
+    const g = k.build();
+    if (!g) return;
+    this.geometries.push(g);
+    this.armR.add(mesh(g, material));
+  }
+
+  /**
+   * Sitting at a table, eating: the hand rests by the plate, then every few seconds lifts the food up
+   * for a bite while the head dips to meet it and chews.
+   */
+  eat(t: number, phase: number) {
+    const c = (t + phase) % 6.5; // one bite every 6.5 s
+    const lift = c < 1.6 ? Math.sin((c / 1.6) * Math.PI) : 0;
+    this.armR.rotation.x = -1.25 - lift * 0.8;
+    this.armR.rotation.z = 0.1 + lift * 0.3;
+    this.armL.rotation.x = -1.2 + Math.sin(t * 0.5 + phase) * 0.04;
+    this.head.rotation.x = lift * 0.18 + (c > 1.2 && c < 3 ? Math.abs(Math.sin(t * 9)) * 0.04 : 0);
+    this.head.rotation.y = c > 3.5 ? Math.sin((t + phase) * 0.35) * 0.3 : 0;
+  }
+
   /** Puts the arms back after waving or painting. */
   rest() {
     this.armR.rotation.set(0, 0, -0.08);
@@ -183,6 +207,50 @@ export class Person {
   dispose() {
     this.geometries.forEach((g) => g.dispose());
   }
+}
+
+export type Food = "burger" | "fries" | "drink";
+
+/**
+ * Fast food, sitting on y = 0 and centred: a burger (sesame bun, patty, cheese and lettuce), fries in a
+ * red carton, or a red cup with a lid and straw. About hand-sized.
+ */
+export function food(kind: Food) {
+  const k = new Kit();
+  if (kind === "burger") {
+    k.add(new SphereGeometry(0.075, 14, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2).scale(1, 0.45, 1), "#d9963e");
+    k.cyl(0.078, 0.078, 0.022, "#5a3220", { y: 0.004 }, 14);
+    k.box(0.12, 0.006, 0.12, "#ffcc33", { y: 0.026, ry: 0.4 });
+    k.cyl(0.082, 0.082, 0.008, "#4fae3c", { y: 0.03 }, 14);
+    k.add(new SphereGeometry(0.075, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.62, 1), "#e0a04a", {
+      y: 0.038,
+    });
+    for (let i = 0; i < 6; i++) {
+      const a = i * 2.4;
+      const r = 0.025 + (i % 3) * 0.012;
+      k.ball(
+        0.007,
+        "#f6ecd2",
+        { x: Math.cos(a) * r, y: 0.038 + 0.045 * Math.sqrt(1 - (r / 0.08) ** 2), z: Math.sin(a) * r },
+        4,
+        3,
+      );
+    }
+  } else if (kind === "fries") {
+    k.cyl(0.05, 0.036, 0.09, "#d3121f", {}, 8);
+    k.box(0.05, 0.03, 0.006, "#ffd400", { y: 0.05, z: 0.042 });
+    for (let i = 0; i < 9; i++) {
+      const x = ((i % 3) - 1) * 0.022;
+      const z = (Math.floor(i / 3) - 1) * 0.02;
+      k.box(0.011, 0.075 + (i % 4) * 0.012, 0.011, "#f6c445", { x, y: 0.06, z, rx: z * 3, rz: -x * 3 });
+    }
+  } else {
+    k.cyl(0.042, 0.032, 0.13, "#d3121f", {}, 10);
+    k.box(0.04, 0.035, 0.004, "#ffffff", { y: 0.05, z: 0.04 });
+    k.cyl(0.045, 0.045, 0.01, "#f2f2f0", { y: 0.13 }, 10);
+    k.cyl(0.005, 0.005, 0.09, "#ffd400", { y: 0.13, x: 0.01, rz: -0.15 }, 5);
+  }
+  return k;
 }
 
 /** A seeded mix of everyday Ilonggo afternoon looks for the people in the plaza. */

@@ -86,6 +86,7 @@ export class Walk {
       cart: { x: world.props.fountain.x + 7.5, z: world.props.fountain.z + 5 },
       balloons: world.props.balloonSpot,
       gate: { x: gx, z: gz, facing: MANSION.angle },
+      diners: world.props.diners,
     });
     this.player = new Person(
       { skin: "#c68863", hair: "#2b211c", shirt: "#d63c62", pants: "#1a2b52", hat: "straw", backpack: "#f2a516" },
@@ -323,7 +324,10 @@ export class Walk {
         const b = ease(this.blend);
         camera.position.lerpVectors(high, follow, b);
         camera.lookAt(this.tmp.lerpVectors(centre, target, b));
-        if (this.blend >= 1) game.cinematic = null;
+        if (this.blend >= 1) {
+          game.cinematic = null;
+          game.emit({ type: "intro-done" });
+        }
       }
     } else if (game.cinematic === "found") {
       // swing round to look at Mark and you together

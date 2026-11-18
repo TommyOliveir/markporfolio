@@ -39,6 +39,8 @@ export default function FindMark() {
   // On phones a landmark card shows in full for a few seconds ("auto"), then shrinks to a one-line chip
   // ("mini") so it doesn't hide the place you walked up to; tapping the chip opens it for good ("open").
   const [landmarkView, setLandmarkView] = useState<"auto" | "mini" | "open">("auto");
+  // the camera has swooped down from the overview to behind you (phones hold landmark cards until then)
+  const [introDone, setIntroDone] = useState(false);
   const [foundOnce, setFoundOnce] = useState(false);
   const [guiding, setGuiding] = useState<GuideTo | null>(null);
   const [muted, setMuted] = useState(false);
@@ -47,25 +49,29 @@ export default function FindMark() {
   const [notice, setNotice] = useState<string | null>(null);
   const touch = useMedia("(pointer: coarse)");
   const small = useMedia("(max-width: 700px)");
+  const phone = useMedia("(max-width: 639px)");
   const reduced = useMedia("(prefers-reduced-motion: reduce)");
   const webgl = useWebGL();
   const stage = useRef<HTMLDivElement>(null);
   const stickBase = useRef<HTMLDivElement>(null);
   const stickKnob = useRef<HTMLDivElement>(null);
 
+  const showLandmark = landmark !== null && !landmarkClosed && (!phone || (introDone && landmark.id !== "mansion"));
+
   // phones: shrink the landmark card to a chip after a few seconds, unless it was opened by hand
   useEffect(() => {
-    if (!landmark || landmarkClosed || landmarkView !== "auto") return;
+    if (!landmark || landmarkClosed || landmarkView !== "auto" || !introDone) return;
     if (!window.matchMedia("(max-width: 639px)").matches) return;
     const id = window.setTimeout(() => setLandmarkView("mini"), 6000);
     return () => window.clearTimeout(id);
-  }, [landmark, landmarkClosed, landmarkView]);
+  }, [landmark, landmarkClosed, landmarkView, introDone]);
 
   // news from the scene
   useEffect(() => {
     let celebrate = 0;
     const off = game.on((e) => {
       if (e.type === "ready") setReady(true);
+      if (e.type === "intro-done") setIntroDone(true);
       if (e.type === "found") {
         setFoundOnce(true);
         // let the camera swing round and the confetti fly before the card comes up (a little longer on
@@ -354,10 +360,11 @@ export default function FindMark() {
       {/* the card for the landmark you're passing: under the top bar on phones (clear of your thumb),
           bottom left on bigger screens. Only its buttons catch clicks or touches; closing it hides it
           until you reach the next landmark, so you can take in the view. On phones it shrinks to a chip
-          after a few seconds (see landmarkView). */}
+          after a few seconds (see landmarkView), waits for the intro swoop to land, and skips the
+          mansion (the "found him" card already tells that story). */}
       <div className="pointer-events-none absolute inset-x-3 top-48 z-10 sm:top-auto sm:right-auto sm:bottom-16 sm:left-5 sm:w-96">
         <AnimatePresence mode="wait">
-          {landmark && !landmarkClosed && landmarkView === "mini" && (
+          {showLandmark && landmarkView === "mini" && (
             <motion.div
               key={`${landmark.id}-mini`}
               initial={{ opacity: 0, y: -6 }}
@@ -395,7 +402,7 @@ export default function FindMark() {
               </button>
             </motion.div>
           )}
-          {landmark && !landmarkClosed && landmarkView !== "mini" && (
+          {showLandmark && landmarkView !== "mini" && (
             <motion.div
               key={landmark.id}
               initial={{ opacity: 0, y: 16, rotate: -1 }}
@@ -407,10 +414,9 @@ export default function FindMark() {
             >
               <button
                 type="button"
-                onClick={() => {
-                  setLandmarkClosed(true);
-                  game.audio.stopSong(); // closing the card turns its music off too
-                }}
+                // closing the card leaves its music on: it plays for as long as you're in the area, and
+                // fades out when you walk away (see walk.ts)
+                onClick={() => setLandmarkClosed(true)}
                 onPointerDown={(e) => e.stopPropagation()}
                 aria-label={`Close the card about ${landmark.title}`}
                 title="Close"
