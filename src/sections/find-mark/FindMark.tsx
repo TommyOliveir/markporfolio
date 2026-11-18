@@ -33,6 +33,7 @@ export default function FindMark() {
   const [started, setStarted] = useState(false);
   const [card, setCard] = useState<Card>(null);
   const [landmark, setLandmark] = useState<Landmark | null>(null);
+  const [landmarkClosed, setLandmarkClosed] = useState(false);
   const [foundOnce, setFoundOnce] = useState(false);
   const [guiding, setGuiding] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -57,7 +58,10 @@ export default function FindMark() {
         // let the camera swing round and the confetti fly before the card comes up
         celebrate = window.setTimeout(() => setCard("found"), 1700);
       }
-      if (e.type === "landmark") setLandmark(e.landmark);
+      if (e.type === "landmark") {
+        setLandmark(e.landmark);
+        setLandmarkClosed(false); // a new place (or coming back to one) shows its card again
+      }
       if (e.type === "guide") setGuiding(e.on);
       if (e.type === "route-failed") setNotice("Can't find a way through from here — try stepping into the open.");
     });
@@ -331,19 +335,40 @@ export default function FindMark() {
       </div>
 
       {/* the card for the landmark you're passing: under the top bar on phones (clear of your thumb),
-          bottom left on bigger screens. It never catches clicks or touches. */}
+          bottom left on bigger screens. Only its close button catches clicks or touches; closing it
+          hides it until you reach the next landmark, so you can take in the view. */}
       <div className="pointer-events-none absolute inset-x-3 top-48 z-10 sm:top-auto sm:right-auto sm:bottom-16 sm:left-5 sm:w-96">
         <AnimatePresence mode="wait">
-          {landmark && (
+          {landmark && !landmarkClosed && (
             <motion.div
               key={landmark.id}
               initial={{ opacity: 0, y: 16, rotate: -1 }}
               animate={{ opacity: 1, y: 0, rotate: 0 }}
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-              className="print rounded-xl p-3.5 sm:p-5"
+              className="print relative rounded-xl p-3.5 pr-12 sm:p-5 sm:pr-14"
               aria-live="polite"
             >
+              <button
+                type="button"
+                onClick={() => setLandmarkClosed(true)}
+                onPointerDown={(e) => e.stopPropagation()}
+                aria-label={`Close the card about ${landmark.title}`}
+                title="Close"
+                className="pointer-events-auto absolute top-1 right-1 grid size-11 place-items-center rounded-full text-ink-soft transition-colors hover:bg-paper-deep hover:text-ink sm:top-2 sm:right-2"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="size-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  aria-hidden
+                >
+                  <path d="M6 6l12 12M18 6 6 18" />
+                </svg>
+              </button>
               <p className="caps text-[0.6rem] text-rose-ink">{landmark.kicker}</p>
               <p className="font-display mt-0.5 text-xl leading-tight font-semibold sm:mt-1 sm:text-[1.7rem]">
                 {landmark.title}

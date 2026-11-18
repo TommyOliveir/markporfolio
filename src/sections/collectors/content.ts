@@ -46,4 +46,11 @@ export const collectors: Collector[] = [
     photo: { src: "/art/collectors/collector-3.jpg", width: 2048, height: 1536 },
     tint: "#1b8e8e",
   },
+  {
+    name: "Two new postcard friends", // TODO: names / how they'd like to be credited
+    role: "At Molo Mansion",
+    note: "City of Love, times two",
+    photo: { src: "/art/collectors/collector-6.jpg", width: 2048, height: 1536 },
+    tint: "#d63c62",
+  },
 ];
