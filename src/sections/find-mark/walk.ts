@@ -12,6 +12,7 @@ import {
   type Camera,
   type DirectionalLight,
   type Material,
+  type Object3D,
 } from "three";
 import { buildWorld } from "./build-world";
 import type { Circle } from "./collide";
@@ -24,7 +25,19 @@ import { seeThrough, time } from "./materials";
 import { Person } from "./people";
 import { SUN, buildClouds, buildSky } from "./sky";
 import { Traffic } from "./traffic";
-import { FOUND_RADIUS, MANSION, MARK, WORLD_RADIUS, landmarks, toWorld, type Landmark } from "./world";
+import { ceilingLocal, insideLocal, PLAN } from "./church-interior";
+import {
+  CHURCH,
+  FOUND_RADIUS,
+  MANSION,
+  MARK,
+  WORLD_RADIUS,
+  churchInside,
+  landmarks,
+  toLocal,
+  toWorld,
+  type Landmark,
+} from "./world";
 
 const WALK = 4.2;
 const RUN = 7.6;
@@ -57,6 +70,8 @@ export class Walk {
   private extras: Circle[] = [];
   private stepDist = 0;
   private landmark: Landmark | null = null;
+  /** you're in the nave of St. Anne's (the bells ring each time you come in) */
+  private inChurch = false;
   private trailClock = 0;
   private trailFrom = { x: 0, z: 0 };
   private camDist = 8.5;
@@ -156,7 +171,9 @@ export class Walk {
     // ---- a click on the scene: walk there -----------------------------------------------------
     if (game.click && game.started && !game.paused) {
       this.raycaster.setFromCamera(new Vector2(game.click.x, game.click.y), camera);
-      const hit = this.raycaster.intersectObjects(world.clickable, false)[0];
+      // (hidden meshes still get hit by a ray, so skip them: inside the church, the outside is hidden)
+      const shown = (o: Object3D | null): boolean => !o || (o.visible && shown(o.parent));
+      const hit = this.raycaster.intersectObjects(world.clickable, false).find((h) => shown(h.object));
       if (hit) game.walkTo(hit.point.x, hit.point.z);
     }
     game.click = null;
@@ -302,7 +319,11 @@ export class Walk {
       target.y + oy * want,
       target.z + oz * want,
     );
-    const allowed = hit < 1 ? Math.max(want * hit - 0.5, 1.6) : want;
+    // pulled in front of a wall, but never closer than over your shoulder; inside the church, where the
+    // walls, columns and pews are close, it may come right in (or it would end up inside a wall)
+    const [inX, inZ] = toLocal(CHURCH, game.x, game.z);
+    const closest = insideLocal(inX, inZ) ? 0.6 : 1.6;
+    const allowed = hit < 1 ? Math.max(want * hit - 0.4, closest) : want;
     this.camDist += (allowed - this.camDist) * Math.min(dt * (allowed < this.camDist ? 14 : 3), 1);
     const follow = this.follow.set(
       target.x + ox * this.camDist,
@@ -310,6 +331,9 @@ export class Walk {
       target.z + oz * this.camDist,
     );
     follow.y = Math.max(follow.y, world.terrain.heightAt(follow.x, follow.z) + 0.4);
+    // inside the church, keep the camera under the ceiling
+    const [clx, clz] = toLocal(CHURCH, follow.x, follow.z);
+    if (insideLocal(clx, clz)) follow.y = Math.min(follow.y, ceilingLocal(clx, clz) - 0.5);
 
     if (game.cinematic === "intro") {
       // a slow circle high over the plaza while the intro card is up, then a swoop down to you
@@ -384,10 +408,25 @@ export class Walk {
       ring.scale.setScalar(1 + Math.sin(t * 6) * 0.12);
     }
 
+    // St. Anne's: its outside hides while the camera is in there; its inside shows then, and while
+    // you're at the door or inside (so you can see into the nave through the doorway). The bells
+    // ring each time you walk into the nave.
+    const [cax, caz] = toLocal(CHURCH, camera.position.x, camera.position.z);
+    const cameraInside = insideLocal(cax, caz) && camera.position.y < ceilingLocal(cax, caz);
+    const [plx, plz] = toLocal(CHURCH, game.x, game.z);
+    const atDoor = insideLocal(plx, plz) || (plz > PLAN.porch && plz < PLAN.porch + 8 && Math.abs(plx) < 7);
+    world.church.visible = !cameraInside;
+    world.churchInside.visible = cameraInside || atDoor;
+    const inChurch = insideLocal(plx, plz) && plz < PLAN.narthex;
+    if (inChurch && !this.inChurch && game.started) game.audio.bells();
+    this.inChurch = inChurch;
+
     // landmarks you're near
     let near: Landmark | null = null;
-    if (game.started && !game.paused)
+    if (game.started && !game.paused) {
       for (const lm of landmarks) if (Math.hypot(lm.x - game.x, lm.z - game.z) < lm.radius) near = lm;
+      if (inChurch) near = churchInside;
+    }
     if (near !== this.landmark) {
       this.landmark = near;
       if (near?.music) game.audio.playSong(near.music.src, near.music.start);

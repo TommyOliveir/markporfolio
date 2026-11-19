@@ -2,6 +2,9 @@
 // the town, birdsong, the fountain splashing louder as you get near, footsteps, a jeepney's horn,
 // and a little tune when you find Mark.
 
+/** A recording of St. Anne's bell, if one has been added to public/ (otherwise the bell is synthesised). */
+const BELL_FILE = "/church-bell.mp3";
+
 export class Ambience {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -10,6 +13,9 @@ export class Ambience {
   private birdTimer = 0;
   private muted = false;
   private song: HTMLAudioElement | null = null;
+  private bellsUntil = 0;
+  private bellFile: HTMLAudioElement | null = null;
+  private bellStop = 0;
   private songFade = 0;
 
   /** Starts the sound (must be called from a click or key press). */
@@ -78,6 +84,7 @@ export class Ambience {
   setMuted(m: boolean) {
     this.muted = m;
     if (this.song) this.song.muted = m;
+    if (this.bellFile) this.bellFile.muted = m;
     if (this.master && this.ctx) this.master.gain.setTargetAtTime(m ? 0 : 0.8, this.ctx.currentTime, 0.1);
   }
 
@@ -198,6 +205,97 @@ export class Ambience {
     o.stop(t + 0.45);
   }
 
+  /**
+   * St. Anne's bell, for `seconds`, then fading away. Plays `public/church-bell.mp3` if it's there;
+   * otherwise a big church bell made here: slow, full strokes that ring on, with a light echo.
+   * Does nothing while it's still ringing.
+   */
+  bells(seconds = 7) {
+    const ctx = this.ctx;
+    if (!ctx || !this.master || ctx.currentTime < this.bellsUntil) return;
+    this.bellsUntil = ctx.currentTime + seconds + 2;
+    if (typeof Audio !== "undefined") {
+      const bell = (this.bellFile ??= new Audio(BELL_FILE));
+      bell.muted = this.muted;
+      bell.volume = 0.8;
+      bell.currentTime = 0;
+      window.clearTimeout(this.bellStop);
+      bell
+        .play()
+        .then(() => {
+          // let it ring for `seconds`, then fade it out over two
+          this.bellStop = window.setTimeout(() => {
+            const from = bell.volume;
+            let i = 0;
+            const fade = window.setInterval(() => {
+              bell.volume = Math.max(0, from * (1 - ++i / 25));
+              if (i >= 25) {
+                window.clearInterval(fade);
+                bell.pause();
+              }
+            }, 80);
+          }, seconds * 1000);
+        })
+        .catch(() => this.tolls(seconds)); // no file (or it can't play): make the bell instead
+      return;
+    }
+    this.tolls(seconds);
+  }
+
+  /** A big church bell tolling: a full stroke every 1.8 s, each ringing on for several seconds. */
+  private tolls(seconds: number) {
+    const ctx = this.ctx!;
+    const t0 = ctx.currentTime + 0.05;
+    const end = t0 + seconds;
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0.34, t0);
+    out.gain.setValueAtTime(0.34, end);
+    out.gain.exponentialRampToValueAtTime(0.0001, end + 2);
+    out.connect(this.master!);
+    const echo = ctx.createDelay(1);
+    echo.delayTime.value = 0.23;
+    const feedback = ctx.createGain();
+    feedback.gain.value = 0.3;
+    out.connect(echo).connect(feedback).connect(echo);
+    feedback.connect(this.master!);
+    for (let t = t0; t < end - 0.5; t += 1.8) this.strike(out, t, 392);
+    window.setTimeout(() => out.disconnect(), (seconds + 3) * 1000);
+  }
+
+  /**
+   * One stroke of a church bell with its strike note at `f` Hz: the low hum, the strike note, the third,
+   * fifth and octave above, and the bright metallic partials, each ringing on for its own time.
+   */
+  private strike(out: AudioNode, at: number, f: number) {
+    const ctx = this.ctx!;
+    const partials: [number, number, number][] = [
+      // ratio to the strike note, loudness, how long it rings (s)
+      [0.5, 0.5, 5],
+      [1, 1, 3.6],
+      [1.2, 0.35, 2.6],
+      [1.5, 0.3, 2.2],
+      [2, 0.55, 2],
+      [2.51, 0.2, 1.4],
+      [2.67, 0.18, 1.3],
+      [3.01, 0.15, 1.1],
+      [4.07, 0.09, 0.7],
+      [5.1, 0.05, 0.4],
+    ];
+    for (const [ratio, level, length] of partials) {
+      const o = ctx.createOscillator();
+      o.frequency.value = f * ratio;
+      // a slight beat in each partial, as in a real bell's slightly uneven metal
+      o.detune.value = (ratio * 7) % 4;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(level * 0.2, at + 0.003);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + length);
+      o.connect(g).connect(out);
+      o.start(at);
+      o.stop(at + length + 0.05);
+    }
+  }
+
   /** Plays a song file (a shop's jingle) from `start` seconds in, fading in, and looping back to `start`. */
   playSong(src: string, start: number) {
     if (typeof Audio === "undefined") return;
@@ -246,6 +344,9 @@ export class Ambience {
     window.clearInterval(this.songFade);
     this.song?.pause();
     this.song = null;
+    window.clearTimeout(this.bellStop);
+    this.bellFile?.pause();
+    this.bellFile = null;
     this.ctx?.close();
     this.ctx = null;
   }

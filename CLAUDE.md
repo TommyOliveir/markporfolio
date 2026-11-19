@@ -43,6 +43,7 @@ task, and the other way round. A fix that only works at one size isn't done.
   - Others show text only at one size (`sm:hidden` / `hidden sm:inline`).
 
   Change both branches.
+
 - The 3D walk's HUD must stay usable with touch: keep tap targets at least 44px (`size-11`), and don't
   put cards or buttons over the joystick or under the top bar.
 - No horizontal scrolling at phone width.
@@ -57,12 +58,14 @@ Mansion, and commissions are by phone or Messenger. Tailwind v4 (theme tokens su
 React Three Fiber.
 
 **Content and anchors**
+
 - Site-wide details (name, phone, bio) are in `src/data/site.ts`. Each section's content is in
   `src/sections/<section>/content.ts`.
 - `src/sections/sections.ts` is the single source for section anchor ids, nav labels and page paths. Use
   `id={sections.x.id}`, `href(sections.x)` and `pages.*`; don't hard-code `#ids` or paths.
 
 **Pages**
+
 - `src/app/page.tsx` is the one-page landing: Hero → Ribbon (floating islands) → Paintings → Textiles →
   Postcards → About → Collectors → Commission.
 - Standalone routes: `/paintings/[slug]`, `/iloilo` and `/find-mark`.
@@ -70,6 +73,7 @@ React Three Fiber.
   Every artwork gets a node.
 
 **Shared visual pieces** (`src/components/ui`)
+
 - `Watercolor` draws SVG watercolour washes stretched over a section with `preserveAspectRatio="none"`.
   A bloom near the section's top or bottom edge gets clipped into a hard line, so fade it with a mask.
 - The body has a paper-grain background. A section that paints its own flat background shows a visible
@@ -94,6 +98,7 @@ waterfall), circled by text labels.
 A game-like walk through real Molo, Iloilo City, built mostly with plain three.js inside one R3F canvas.
 
 **Data flow**
+
 - `scripts/build-molo-map.mjs` turns OpenStreetMap data into the generated file `molo-map.ts`.
 - Coordinates are metres from Molo Plaza's centre: x = east, z = south.
 - `build-world.ts` assembles the scene from that map data:
@@ -106,6 +111,7 @@ A game-like walk through real Molo, Iloilo City, built mostly with plain three.j
   into a single geometry.
 
 **Runtime**
+
 - `game.ts` (`Game`) holds the shared state between the React page and the scene: position, controls,
   route and guiding (`guide(on, "mark" | "supermart")`), plus events sent through `emit`.
 - `walk.ts` (`Walk.frame`) runs every frame: movement, camera, landmarks, trail, and updates to uniforms
@@ -116,10 +122,23 @@ A game-like walk through real Molo, Iloilo City, built mostly with plain three.j
 `WalkGrid` pathfinding. Anything solid you add must also register an obstacle.
 
 **Landmarks** (`landmarks` in `world.ts`)
+
 - Walking within a landmark's `radius` pops up its card.
 - An optional `music: { src, start, title }` plays an audio file from `start` seconds instead of the
   chime. This uses `Ambience.playSong` / `stopSong` in `audio.ts`; all other sounds are generated with
   the Web Audio API.
+
+**Inside St. Anne's** (`church-interior.ts`)
+
+- The church can be entered. `PLAN` holds its floor plan in church-local metres.
+- `insideLocal`, `floorLocal` and `ceilingLocal` drive the floor heights (in `Terrain`) and keep the
+  camera under the ceilings.
+- `addChurchObstacles` replaces the old solid footprint with walls that leave a gap at the door.
+- The interior is a separate mesh. `Walk` hides the exterior while the camera is inside, and shows the
+  interior while the camera is inside or the walker is at the door.
+- The inside walls sit `IN` (0.2 m) inside the outline so they never poke through the outside walls.
+- Walking into the nave rings `Ambience.bells()`: it plays `public/church-bell.mp3` if present, otherwise
+  a synthesised bell.
 
 **Shop signs** come from `signs` in `molo-map.ts`. Each is hung on its building's street-facing wall.
 Optional `street` pins it to the wall facing a named road; `BRAND_COLOURS` in `labels.ts` overrides a

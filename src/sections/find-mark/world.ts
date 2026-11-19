@@ -149,5 +149,16 @@ export const landmarks: Landmark[] = [
   },
 ];
 
+/** The card inside St. Anne's, once you're through the door and into the nave. */
+export const churchInside: Landmark = {
+  id: "church-inside",
+  x: CHURCH.x,
+  z: CHURCH.z,
+  radius: 0,
+  kicker: "Inside St. Anne's",
+  title: "The sixteen saints",
+  text: "Eight female saints on the columns each side of the nave, leading you up to St. Anne herself on the altar. Listen to the bells!",
+};
+
 /** Google Maps directions to the mansion, for the "found him" card. */
 export const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${shop.geo.latitude},${shop.geo.longitude}`;

@@ -5,12 +5,13 @@
 import { Group, Mesh, type Material } from "three";
 import { buildBuildings } from "./buildings";
 import { buildChurch } from "./church";
+import { addChurchObstacles, buildChurchInterior, floorLocal } from "./church-interior";
 import { Obstacles, WalkGrid } from "./collide";
 import { buildGround } from "./ground";
 import { Kit } from "./kit";
 import { buildMansion, buildReflectingPool } from "./mansion";
 import { buildingMaterial, groundMaterial, paintedMaterial } from "./materials";
-import { churchFootprint, points } from "./molo-map";
+import { points } from "./molo-map";
 import { buildProps, type Platform } from "./props";
 import { buildTrees } from "./trees";
 import { CHURCH, MANSION, TERRACE_HEIGHT, WORLD_RADIUS, toLocal, toWorld, type Frame } from "./world";
@@ -26,6 +27,8 @@ export class Terrain {
       return (TERRACE_HEIGHT * (7.25 - mz)) / 3.95;
     }
     const [cx, cz] = toLocal(CHURCH, x, z);
+    const inside = floorLocal(cx, cz);
+    if (inside !== null) return inside;
     if (Math.abs(cx) < 6 && cz > 1.8 && cz < 4.5) return (0.45 * (4.5 - cz)) / 2.7;
     for (const p of this.platforms) {
       const d = Math.hypot(x - p.x, z - p.z);
@@ -87,7 +90,15 @@ export function buildWorld(lite: boolean) {
   church.castShadow = true;
   church.receiveShadow = true;
   root.add(placed(church, CHURCH));
-  obstacles.addPolygon(churchFootprint, 40);
+  // and its inside: hidden until the camera goes in through the door (see Walk)
+  // (a touch of warm glow of its own, as if lit by the windows and chandeliers, so the ceilings
+  // don't go muddy in the shade)
+  const insideMaterial = keep(paintedMaterial());
+  insideMaterial.emissive.set("#2a241c");
+  const churchInside = new Mesh(buildChurchInterior(), insideMaterial);
+  churchInside.visible = false;
+  root.add(placed(churchInside, CHURCH));
+  addChurchObstacles(obstacles);
 
   // Molo Mansion, its terraces and staircase
   const mansion = new Mesh(buildMansion(), painted);
@@ -145,7 +156,9 @@ export function buildWorld(lite: boolean) {
     painted,
     mansionGroup,
     /** What a click can land on. */
-    clickable: [ground, buildings, church, mansion],
+    clickable: [ground, buildings, church, churchInside, mansion],
+    church,
+    churchInside,
     /** The route grid takes a moment, so it's built when first needed. */
     walkGrid: () => new WalkGrid(obstacles, WORLD_RADIUS + 10),
     dispose() {

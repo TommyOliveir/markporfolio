@@ -55,21 +55,34 @@ function inject(
     .replace("#include <color_fragment>", `#include <color_fragment>\n${fragBody}`);
 }
 
-/** Plain painted surfaces: hero buildings, props, people. A soft wash of noise over the vertex colours. */
-export function paintedMaterial(strength = 0.07, side?: typeof DoubleSide) {
+/** How the see-through tube is shaped: its radius near the camera and at the walker, and how low it reaches. */
+export type SeeThrough = { near: number; far: number; minY: number };
+
+/**
+ * Plain painted surfaces: hero buildings, props, people. A soft wash of noise over the vertex colours.
+ * With `see`, whatever stands between the camera and the walker thins out (the church's pillars and pews).
+ */
+export function paintedMaterial(strength = 0.07, side?: typeof DoubleSide, see?: SeeThrough) {
   const m = new MeshLambertMaterial({ vertexColors: true, ...(side ? { side } : {}) });
-  m.onBeforeCompile = (shader) =>
+  m.onBeforeCompile = (shader) => {
+    if (see) {
+      shader.uniforms.uSeeTarget = seeThrough.target;
+      shader.uniforms.uSeeOn = seeThrough.on;
+    }
     inject(
       shader,
       "",
       "",
-      "",
+      see ? SEE_UNIFORMS : "",
       /* glsl */ `
+      ${see ? seeFragment("vFmWorld", see) : ""}
       float wash = fmFbm(vFmWorld.xz * 0.35 + vFmWorld.y * 0.21) - 0.5;
       diffuseColor.rgb *= 1.0 + wash * ${strength.toFixed(3)} * 2.0;
     `,
     );
-  m.customProgramCacheKey = () => `painted-${strength}-${side ?? 0}`;
+  };
+  m.customProgramCacheKey = () =>
+    `painted-${strength}-${side ?? 0}-${see ? `${see.near}-${see.far}-${see.minY}` : "solid"}`;
   return m;
 }
 
@@ -236,8 +249,11 @@ export function swayMaterial(from = 0.8, amount = 0.035, side?: typeof DoubleSid
       shader.uniforms.uSeeTarget = seeThrough.target;
       shader.uniforms.uSeeOn = seeThrough.on;
       shader.fragmentShader = shader.fragmentShader
-        .replace("#include <common>", `#include <common>\n${SEE_FRAGMENT_HEAD}`)
-        .replace("#include <clipping_planes_fragment>", `#include <clipping_planes_fragment>\n${SEE_FRAGMENT}`);
+        .replace("#include <common>", `#include <common>\n${SEE_UNIFORMS}\nvarying vec3 vSeeWorld;`)
+        .replace(
+          "#include <clipping_planes_fragment>",
+          `#include <clipping_planes_fragment>\n${seeFragment("vSeeWorld", TREES_SEE)}`,
+        );
     }
   };
   m.customProgramCacheKey = () => `sway-${from}-${amount}-${side ?? 0}-${see ? 1 : 0}`;
@@ -254,27 +270,30 @@ const SEE_VERTEX = /* glsl */ `
   #endif
   vSeeWorld = (modelMatrix * seeWorld).xyz;
 `;
-const SEE_FRAGMENT_HEAD = /* glsl */ `
+const SEE_UNIFORMS = /* glsl */ `
   uniform vec3 uSeeTarget;
   uniform float uSeeOn;
-  varying vec3 vSeeWorld;
 `;
-const SEE_FRAGMENT = /* glsl */ `
-  if (uSeeOn > 0.5) {
+// trees: the tube widens towards the walker, so a whole canopy in front of him opens up
+const TREES_SEE: SeeThrough = { near: 1.2, far: 3.6, minY: -100 };
+/** The fragment-shader test: `pos` is the world-position varying. Nothing below `minY` (floors) thins out. */
+function seeFragment(pos: string, see: SeeThrough) {
+  return /* glsl */ `
+  if (uSeeOn > 0.5 && ${pos}.y > ${see.minY.toFixed(2)}) {
     vec3 seeSeg = uSeeTarget - cameraPosition;
     float seeLen = length(seeSeg);
     vec3 seeDir = seeSeg / max(seeLen, 0.001);
-    float seeT = dot(vSeeWorld - cameraPosition, seeDir);
+    float seeT = dot(${pos} - cameraPosition, seeDir);
     if (seeT > 0.0 && seeT < seeLen - 0.5) {
-      float seeD = length(vSeeWorld - cameraPosition - seeDir * seeT);
-      // the tube widens towards the walker, so a whole canopy in front of him opens up
-      float seeR = mix(1.2, 3.6, clamp(seeT / seeLen, 0.0, 1.0));
+      float seeD = length(${pos} - cameraPosition - seeDir * seeT);
+      float seeR = mix(${see.near.toFixed(2)}, ${see.far.toFixed(2)}, clamp(seeT / seeLen, 0.0, 1.0));
       float seeFade = (1.0 - smoothstep(seeR * 0.55, seeR, seeD)) * 0.82;
       float seeNoise = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
       if (seeNoise < seeFade) discard;
     }
   }
 `;
+}
 
 /** Hex string → [r, g, b] in linear colour, ready to write into a colour attribute. */
 export function rgb(hex: string): [number, number, number] {

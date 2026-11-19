@@ -3,9 +3,12 @@
 // stone: a nave with lower side aisles, buttresses topped with pinnacles and lancet windows between
 // them, a transept and sanctuary at the back, and the facade with its twin towers — square below,
 // octagonal belfries above, under tall red spires — a pointed portal, rose window and pediment.
+// The portal is open: a passage runs through the porch and facade into the nave (the inside is
+// drawn separately, in church-interior.ts, and shown while the camera is in there).
 
-import { CircleGeometry, ConeGeometry, CylinderGeometry, SphereGeometry } from "three";
+import { BoxGeometry, CircleGeometry, ConeGeometry, CylinderGeometry, SphereGeometry } from "three";
 import { cross, gable } from "@/sections/floating-islands/paint";
+import { FLOOR_Y, PLAN } from "./church-interior";
 import { Kit, lancet } from "./kit";
 
 const STONE = "#e7dbc1";
@@ -13,7 +16,6 @@ const TRIM = "#f6f0e2";
 const RED = "#a8322b";
 const DARK = "#2b2a32";
 const GLASS = "#3d4b7c";
-const WOOD = "#5b3a26";
 
 export function buildChurch() {
   const k = new Kit();
@@ -23,7 +25,10 @@ export function buildChurch() {
   const zFront = -6.5; // where the facade block starts
   const naveLen = zFront - zBack;
   const naveMid = (zFront + zBack) / 2;
-  k.box(13, 15, naveLen, STONE, { z: naveMid });
+  // the nave's walls and roof deck, open at the front so the passage through the facade looks into it
+  for (const side of [-1, 1]) k.box(0.3, 15, naveLen, STONE, { x: side * 6.35, z: naveMid });
+  k.box(13, 0.3, naveLen, STONE, { y: 14.7, z: naveMid });
+  k.box(13, 15, 0.3, STONE, { z: zBack + 0.15 });
   k.add(gable(14.2, 7, naveLen + 0.6), RED, { y: 15, z: naveMid });
   for (const side of [-1, 1]) {
     k.box(7.7, 9.5, naveLen, STONE, { x: side * 10.35, z: naveMid });
@@ -91,7 +96,11 @@ export function buildChurch() {
   // ---- facade -----------------------------------------------------------------------------------
   const fz = 0.3; // the facade's face
   const fd = fz - zFront;
-  k.box(14.4, 17.5, fd, STONE, { z: zFront + fd / 2 });
+  // the facade block, with the passage through it (dh either side of the middle, dy high)
+  const dh = PLAN.doorHalf;
+  const dy = PLAN.doorHeight;
+  for (const side of [-1, 1]) k.box(7.2 - dh, 17.5, fd, STONE, { x: (side * (7.2 + dh)) / 2, z: zFront + fd / 2 });
+  k.box(dh * 2, 17.5 - dy, fd, STONE, { y: dy, z: zFront + fd / 2 });
   // pediment, with little pinnacles up its rakes and a cross at the top
   k.add(gable(14.4, 6.2, 1.2), STONE, { y: 17.5, z: fz - 0.6 });
   k.add(gable(15.2, 6.6, 0.4), TRIM, { y: 17.4, z: fz + 0.1 });
@@ -127,12 +136,23 @@ export function buildChurch() {
     k.add(lancet(1.1, 2.6, 0.08), GLASS, { x, y: 9, z: fz + 0.05 });
   }
 
-  // the portal: a gabled porch with a deep pointed arch and the wooden doors
-  k.box(8.4, 7.4, 1.5, STONE, { z: fz + 0.75 });
+  // the portal: a gabled porch with the open doorway under a pointed arch, the doors swung back
+  for (const side of [-1, 1]) k.box(4.2 - dh, 7.4, 1.5, STONE, { x: (side * (4.2 + dh)) / 2, z: fz + 0.75 });
+  k.box(dh * 2, 7.4 - dy, 1.5, STONE, { y: dy, z: fz + 0.75 });
   k.add(gable(8.8, 2.6, 1.6), TRIM, { y: 7.4, z: fz + 0.75 });
-  k.add(lancet(4.6, 4.4, 0.1), TRIM, { y: 0, z: fz + 1.52 });
-  k.add(lancet(3.7, 4.0, 0.12), WOOD, { y: 0, z: fz + 1.55 });
-  k.box(0.08, 4.6, 0.14, "#3a2416", { y: 0, z: fz + 1.58 }); // where the doors meet
+  for (const side of [-1, 1]) {
+    k.box(0.3, dy, 0.12, TRIM, { x: side * (dh + 0.15), z: fz + 1.56 }); // door jambs
+    // the pointed arch over the door, one leaning stone each side
+    const lean = Math.atan2(1.1, dh);
+    k.add(new BoxGeometry(Math.hypot(dh, 1.1) + 0.2, 0.35, 0.14), TRIM, {
+      x: (side * dh) / 2,
+      y: dy + 0.55,
+      z: fz + 1.56,
+      rz: -side * lean,
+    });
+  }
+  // the passage floor (a hair under the inside's own floor, so the two don't flicker when both show)
+  k.box(dh * 2, FLOOR_Y - 0.01, PLAN.porch - zFront, "#d9cfbd", { z: (PLAN.porch + zFront) / 2 });
   for (const x of [-4.2, 4.2]) {
     k.box(0.7, 7.4, 0.7, TRIM, { x, z: fz + 1.5 });
     k.add(new ConeGeometry(0.4, 1.8, 4).translate(0, 0.9, 0), TRIM, { x, y: 7.4, z: fz + 1.5, ry: Math.PI / 4 });
