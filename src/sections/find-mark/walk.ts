@@ -287,9 +287,11 @@ export class Walk {
     }
     const target = this.look.set(game.x, game.y + 1.45, game.z);
     if (game.route && !steering) game.yaw += angleTo(game.yaw, game.heading) * Math.min(dt * 1.4, 1);
-    const cp = Math.cos(game.pitch);
+    // the camera orbits no lower than about head height; tilting further (pitch < 0) turns it to look up
+    const camPitch = Math.max(game.pitch, -0.3);
+    const cp = Math.cos(camPitch);
     const ox = -Math.sin(game.yaw) * cp;
-    const oy = Math.sin(game.pitch);
+    const oy = Math.sin(camPitch);
     const oz = -Math.cos(game.yaw) * cp;
     const want = game.distance * (upright ? 1.25 : 1);
     const hit = world.obstacles.firstHit(
@@ -340,7 +342,10 @@ export class Walk {
       camera.lookAt(this.tmp.lerpVectors(target, lookAt, b));
     } else {
       camera.position.copy(follow);
-      camera.lookAt(target);
+      // looking up: aim above your head, up to about 30° over the horizon at full tilt, so tall things
+      // (the church's spires, the mansion's dome) and the sky come into view without losing the street
+      const lift = game.pitch < 0 ? this.camDist * Math.tan(-game.pitch * 0.6) : 0;
+      camera.lookAt(this.tmp.set(target.x, target.y + lift, target.z));
     }
 
     // ---- the world around you -------------------------------------------------------------------

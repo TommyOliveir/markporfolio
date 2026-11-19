@@ -110,10 +110,10 @@ export class Game {
     this.cinematic = null;
   }
 
-  /** Dragging to look round: turn and tilt the camera. */
+  /** Dragging to look round: turn and tilt the camera. Below 0 you look up, at the sky and the spires. */
   look(dx: number, dy: number) {
     this.yaw -= dx;
-    this.pitch = Math.min(Math.max(this.pitch + dy, 0.04), 1.3);
+    this.pitch = Math.min(Math.max(this.pitch + dy, -0.9), 1.3);
   }
 
   /** Wheel or pinch: `factor` > 1 pulls the camera back. */
