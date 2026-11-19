@@ -67,6 +67,25 @@ const PEWS = Array.from({ length: 26 }, (_, i) => -12 - i * 1.35);
 const PEW_IN = 1.25;
 const PEW_OUT = 5.15; // leaves room to walk between the pews and the columns
 
+/**
+ * Where the faithful sit praying, in church-local metres: a scatter of seats along the pews, each facing
+ * the altar (-z). `y` is the seat's height, which a seated Person's root sits 0.82 m below (hip height).
+ */
+export const PRAYER_SEATS: { x: number; y: number; z: number }[] = [
+  [0, -1, 2.0],
+  [0, 1, 3.6],
+  [1, 1, 1.9],
+  [2, -1, 4.1],
+  [3, -1, 2.4],
+  [3, -1, 3.1],
+  [5, 1, 2.7],
+  [7, -1, 1.8],
+  [8, 1, 4.3],
+  [10, 1, 2.2],
+  [12, -1, 3.3],
+  [15, 1, 1.9],
+].map(([row, side, out]) => ({ x: side * out, y: FLOOR_Y + 0.53 - 0.82, z: PEWS[row] + 0.03 }));
+
 /** Is a local point inside the church (the passage, nave, aisles, transept or sanctuary)? */
 export function insideLocal(lx: number, lz: number) {
   const P = PLAN;

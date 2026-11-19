@@ -10,6 +10,12 @@ import { MARK, START, SUPERMART, type Landmark } from "./world";
 export type GuideTo = "mark" | "supermart";
 const DESTINATIONS: Record<GuideTo, { x: number; z: number }> = { mark: MARK, supermart: SUPERMART };
 
+/**
+ * The marching band by the convent: standing at ease beside the church, filing out to the street once
+ * asked to play, marching up and down in front of the church, or heading back when told to stop.
+ */
+export type BandState = "rest" | "gathering" | "parade" | "returning";
+
 export type GameEvent =
   | { type: "ready" }
   | { type: "found" }
@@ -17,7 +23,9 @@ export type GameEvent =
   | { type: "intro-done" }
   | { type: "landmark"; landmark: Landmark | null }
   | { type: "guide"; on: boolean; to: GuideTo }
-  | { type: "route-failed" };
+  | { type: "route-failed" }
+  /** the band changed what it's doing, or you came up to it (or walked off) */
+  | { type: "band"; state: BandState; near: boolean };
 
 export class Game {
   /**
@@ -71,6 +79,11 @@ export class Game {
   reducedMotion = false;
   /** set when the scene has a camera move it wants to make (the intro swoop, the found shot) */
   cinematic: "intro" | "found" | null = "intro";
+
+  /** what the band is doing, whether you're close enough to talk to them, and what you asked */
+  band: BandState = "rest";
+  bandNear = false;
+  bandRequest: "play" | "stop" | null = null;
 
   obstacles: Obstacles | null = null;
   walkGrid: WalkGrid | null = null;
@@ -159,6 +172,11 @@ export class Game {
   /** where the trail leads while guiding */
   get destination() {
     return DESTINATIONS[this.guideTo];
+  }
+
+  /** Asks the band to strike up and march (or to stop and go back). */
+  askBand(play: boolean) {
+    this.bandRequest = play ? "play" : "stop";
   }
 
   /** "Show me the way": draws the trail to Mark (or to Iloilo Supermart) and walks it. */

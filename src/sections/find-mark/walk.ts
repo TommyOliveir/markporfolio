@@ -19,13 +19,14 @@ import type { Circle } from "./collide";
 import { Confetti, Trail, buildClickRing, buildFlag, buildSigns, buildWaters } from "./effects";
 import type { Game } from "./game";
 import { loadFonts } from "./labels";
+import { Band } from "./band";
 import { Life } from "./life";
 import { buildMarkCorner } from "./mark";
 import { seeThrough, time } from "./materials";
 import { Person } from "./people";
 import { SUN, buildClouds, buildSky } from "./sky";
 import { Traffic } from "./traffic";
-import { ceilingLocal, insideLocal, PLAN } from "./church-interior";
+import { ceilingLocal, insideLocal, PLAN, PRAYER_SEATS } from "./church-interior";
 import {
   CHURCH,
   FOUND_RADIUS,
@@ -54,6 +55,7 @@ export class Walk {
   private clouds = buildClouds();
   private traffic: Traffic;
   private life: Life;
+  private band: Band;
   private player: Person;
   private corner: ReturnType<typeof buildMarkCorner>;
   private waters: ReturnType<typeof buildWaters>;
@@ -102,7 +104,10 @@ export class Walk {
       balloons: world.props.balloonSpot,
       gate: { x: gx, z: gz, facing: MANSION.angle },
       diners: world.props.diners,
+      worship: { seats: PRAYER_SEATS, material: world.churchInside.material as Material },
     });
+    world.churchInside.add(this.life.worshippers); // shown and hidden with the interior
+    this.band = new Band(painted, world.obstacles);
     this.player = new Person(
       { skin: "#c68863", hair: "#2b211c", shirt: "#d63c62", pants: "#1a2b52", hat: "straw", backpack: "#f2a516" },
       painted,
@@ -132,6 +137,7 @@ export class Walk {
       this.clouds,
       this.traffic.group,
       this.life.group,
+      this.band.group,
       this.player.root,
       this.corner.group,
       this.corner.beacon,
@@ -232,7 +238,7 @@ export class Walk {
       p.z *= WORLD_RADIUS / r;
     }
     const extras = traffic.colliders(this.extras);
-    extras.push(...life.people());
+    extras.push(...life.people(), ...this.band.colliders());
     world.obstacles.resolve(p, RADIUS, extras);
     game.x = p.x;
     game.z = p.z;
@@ -381,8 +387,9 @@ export class Walk {
       sun.target.position.set(game.x, 0, game.z);
       sun.target.updateMatrixWorld();
     }
-    traffic.update(dt, game);
+    traffic.update(dt, game, this.band.onStreet());
     life.update(dt, t, game);
+    this.band.update(dt, t, game);
     confetti.update(dt);
 
     // the trail to Mark, re-planned as you go
@@ -458,6 +465,7 @@ export class Walk {
     this.world.dispose();
     this.traffic.dispose();
     this.life.dispose();
+    this.band.dispose();
     this.player.dispose();
     this.corner.dispose();
     this.waters.dispose();

@@ -10,7 +10,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { href, sections } from "@/sections/sections";
-import { Game, type GuideTo } from "./game";
+import { Game, type BandState, type GuideTo } from "./game";
 import Minimap from "./Minimap";
 import { useMedia, useWebGL } from "./support";
 import { directionsUrl, shop, type Landmark } from "./world";
@@ -43,6 +43,8 @@ export default function FindMark() {
   const [introDone, setIntroDone] = useState(false);
   const [foundOnce, setFoundOnce] = useState(false);
   const [guiding, setGuiding] = useState<GuideTo | null>(null);
+  // the marching band by the convent: what it's doing, and whether you're close enough to talk to it
+  const [band, setBand] = useState<{ state: BandState; near: boolean }>({ state: "rest", near: false });
   const [muted, setMuted] = useState(false);
   const [help, setHelp] = useState(false);
   const [hint, setHint] = useState(true);
@@ -56,7 +58,11 @@ export default function FindMark() {
   const stickBase = useRef<HTMLDivElement>(null);
   const stickKnob = useRef<HTMLDivElement>(null);
 
-  const showLandmark = landmark !== null && !landmarkClosed && (!phone || (introDone && landmark.id !== "mansion"));
+  // the band's card takes the landmark card's place while you're with the band
+  const showBand = started && !card && band.near && (!phone || introDone);
+  const marching = band.state === "gathering" || band.state === "parade";
+  const showLandmark =
+    !showBand && landmark !== null && !landmarkClosed && (!phone || (introDone && landmark.id !== "mansion"));
 
   // phones: shrink the landmark card to a chip after a few seconds, unless it was opened by hand
   useEffect(() => {
@@ -86,6 +92,7 @@ export default function FindMark() {
         setLandmarkView("auto");
       }
       if (e.type === "guide") setGuiding(e.on ? e.to : null);
+      if (e.type === "band") setBand({ state: e.state, near: e.near });
       if (e.type === "route-failed") setNotice("Can't find a way through from here — try stepping into the open.");
     });
     return () => {
@@ -364,6 +371,39 @@ export default function FindMark() {
           mansion (the "found him" card already tells that story). */}
       <div className="pointer-events-none absolute inset-x-3 top-48 z-10 sm:top-auto sm:right-auto sm:bottom-16 sm:left-5 sm:w-96">
         <AnimatePresence mode="wait">
+          {showBand && (
+            <motion.div
+              key="band"
+              initial={{ opacity: 0, y: 16, rotate: -1 }}
+              animate={{ opacity: 1, y: 0, rotate: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+              className="print relative rounded-xl p-3.5 sm:p-5"
+              aria-live="polite"
+            >
+              <p className="caps text-[0.6rem] text-rose-ink">{marching ? "On parade" : "By the convent"}</p>
+              <p className="font-display mt-0.5 text-xl leading-tight font-semibold sm:mt-1 sm:text-[1.7rem]">
+                The Molo marching band
+              </p>
+              <p className="mt-1 text-sm leading-snug text-ink-soft sm:mt-1.5 sm:text-base">
+                {marching
+                  ? "Trumpets, trombones, sousaphones and drums, marching up and down in front of St. Anne's."
+                  : "Twenty bandsmen at ease beside St. Anne's. Ask them for a tune and they'll march it down Jocson Street."}
+              </p>
+              {marching && muted && (
+                <p className="mt-2 text-xs text-rose-ink sm:text-sm">Turn the sound on to hear them.</p>
+              )}
+              <button
+                type="button"
+                onClick={() => game.askBand(!marching)}
+                onPointerDown={(e) => e.stopPropagation()}
+                className={`btn ${marching ? "btn-ink" : "btn-gold"} pointer-events-auto mt-3 w-full px-4 text-[0.68rem] tracking-[0.12em] sm:w-auto sm:text-[0.75rem] sm:tracking-[0.18em]`}
+              >
+                <span aria-hidden>{marching ? "■" : "♪"}</span>
+                {marching ? "Tell them to stop" : "Play band"}
+              </button>
+            </motion.div>
+          )}
           {showLandmark && landmarkView === "mini" && (
             <motion.div
               key={`${landmark.id}-mini`}

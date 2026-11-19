@@ -227,8 +227,8 @@ export class Traffic {
     this.update(0, { x: 1e5, z: 1e5 });
   }
 
-  /** Moves everything on; stops for anything (or anyone) just ahead. */
-  update(dt: number, player: { x: number; z: number }) {
+  /** Moves everything on; stops for anything (or anyone: you, the marching band) just ahead. */
+  update(dt: number, player: { x: number; z: number }, others: readonly { x: number; z: number }[] = []) {
     for (const v of this.vehicles) {
       const r = v.route;
       let target = v.max;
@@ -239,20 +239,22 @@ export class Traffic {
         if (r.loop && gap < 0) gap += r.length;
         if (gap > 0 && gap < 14) target = Math.min(target, Math.max(0, (gap - 7) * 1.2));
       }
-      // stop for the visitor
+      // stop for the visitor (honking if it's a jeepney in a hurry), and for anyone else on foot
       const fx = Math.sin(v.heading);
       const fz = Math.cos(v.heading);
-      const dx = player.x - v.object.position.x;
-      const dz = player.z - v.object.position.z;
-      const ahead = dx * fx + dz * fz;
-      const side = Math.abs(-dx * fz + dz * fx);
-      if (ahead > 0 && ahead < 9 && side < 1.8) {
+      const blocks = (who: { x: number; z: number }) => {
+        const dx = who.x - v.object.position.x;
+        const dz = who.z - v.object.position.z;
+        const ahead = dx * fx + dz * fz;
+        return ahead > 0 && ahead < 9 && Math.abs(-dx * fz + dz * fx) < 1.8;
+      };
+      if (blocks(player)) {
         target = 0;
         if (v.speed > 2 && v.kind === "jeepney" && performance.now() - v.honked > 6000) {
           v.honked = performance.now();
           this.onHorn?.();
         }
-      }
+      } else if (others.some(blocks)) target = 0;
       v.speed += (target - v.speed) * Math.min(dt * (target < v.speed ? 4 : 1.2), 1);
       v.s += v.speed * dt;
       if (v.s > r.length) v.s = r.loop ? v.s - r.length : 0;

@@ -10,8 +10,10 @@ export type Look = {
   shirt: string;
   pants: string;
   shoes?: string;
-  hat?: "straw" | "beret" | "cap" | "bun" | "none";
+  hat?: "straw" | "beret" | "cap" | "bun" | "shako" | "none";
   hatColor?: string;
+  /** the plume on a bandsman's shako */
+  plume?: string;
   skirt?: boolean;
   /** a tote bag (colour) on one shoulder */
   bag?: string;
@@ -130,6 +132,17 @@ export class Person {
       case "bun":
         h.ball(0.1, look.hair, { y: 0.36, z: -0.14 });
         break;
+      case "shako": {
+        // a marching band's tall hat: crown, black peak, gold badge and band, and a plume
+        const c = look.hatColor ?? "#f4f1ea";
+        h.cyl(0.215, 0.2, 0.34, c, { y: 0.3 }, 16);
+        h.cyl(0.222, 0.222, 0.035, "#d8b24a", { y: 0.3 }, 16);
+        h.cyl(0.222, 0.222, 0.03, "#d8b24a", { y: 0.6 }, 16);
+        h.box(0.3, 0.02, 0.14, "#151515", { y: 0.3, z: 0.2, rx: 0.25 });
+        h.ball(0.055, "#d8b24a", { y: 0.46, z: 0.2, sz: 0.3 }, 10, 6);
+        h.add(new ConeGeometry(0.06, 0.32, 8).translate(0, 0.16, 0), look.plume ?? "#c8102e", { y: 0.62 });
+        break;
+      }
     }
     this.head.add(mesh(keep(h), material));
     this.head.position.y = 1.4;
@@ -178,10 +191,17 @@ export class Person {
   hold(kind: Food, material: Material) {
     const k = new Kit();
     k.merge(food(kind), { y: -0.66, z: 0.02, rx: Math.PI / 2 });
+    this.attach(this.armR, k, material);
+  }
+
+  /** Adds a model (an instrument, a stick) to one of the figure's parts, so it moves with it. */
+  attach(part: Group, k: Kit, material: Material) {
     const g = k.build();
-    if (!g) return;
+    if (!g) return null;
     this.geometries.push(g);
-    this.armR.add(mesh(g, material));
+    const m = mesh(g, material);
+    part.add(m);
+    return m;
   }
 
   /**
@@ -196,6 +216,15 @@ export class Person {
     this.armL.rotation.x = -1.2 + Math.sin(t * 0.5 + phase) * 0.04;
     this.head.rotation.x = lift * 0.18 + (c > 1.2 && c < 3 ? Math.abs(Math.sin(t * 9)) * 0.04 : 0);
     this.head.rotation.y = c > 3.5 ? Math.sin((t + phase) * 0.35) * 0.3 : 0;
+  }
+
+  /** Seated in a pew, praying: head bowed, hands together in front, breathing slowly. */
+  pray(t: number, phase: number) {
+    const breathe = Math.sin(t * 0.9 + phase);
+    this.armL.rotation.set(-1.0 + breathe * 0.02, 0, -0.42);
+    this.armR.rotation.set(-1.0 + breathe * 0.02, 0, 0.42);
+    this.head.rotation.x = 0.38 + Math.sin(t * 0.3 + phase) * 0.05;
+    this.body.position.y = breathe * 0.006;
   }
 
   /** Puts the arms back after waving or painting. */

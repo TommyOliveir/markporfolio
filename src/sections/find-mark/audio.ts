@@ -4,6 +4,13 @@
 
 /** A recording of St. Anne's bell, if one has been added to public/ (otherwise the bell is synthesised). */
 const BELL_FILE = "/church-bell.mp3";
+/** Seconds between strokes in that recording (they land at about 0.1, 6.05, 11.9 and 18.6 s). */
+const BELL_FILE_GAP = 5.9;
+/** The marching band's tune (public/viva.mp3). If it can't play, the band plays a drum cadence and an
+ * oom-pah bass made here instead. */
+const BAND_FILE = "/viva.mp3";
+/** Seconds between strokes of the synthesised bell. */
+const BELL_SYNTH_GAP = 2.4;
 
 export class Ambience {
   private ctx: AudioContext | null = null;
@@ -17,6 +24,10 @@ export class Ambience {
   private bellFile: HTMLAudioElement | null = null;
   private bellStop = 0;
   private songFade = 0;
+  private band: HTMLAudioElement | null = null;
+  private bandOn = false;
+  private bandLevel = 0;
+  private bandSynth: { out: GainNode; timer: number; next: number; beat: number } | null = null;
 
   /** Starts the sound (must be called from a click or key press). */
   start() {
@@ -85,6 +96,7 @@ export class Ambience {
     this.muted = m;
     if (this.song) this.song.muted = m;
     if (this.bellFile) this.bellFile.muted = m;
+    if (this.band) this.band.muted = m;
     if (this.master && this.ctx) this.master.gain.setTargetAtTime(m ? 0 : 0.8, this.ctx.currentTime, 0.1);
   }
 
@@ -206,13 +218,15 @@ export class Ambience {
   }
 
   /**
-   * St. Anne's bell, for `seconds`, then fading away. Plays `public/church-bell.mp3` if it's there;
-   * otherwise a big church bell made here: slow, full strokes that ring on, with a light echo.
-   * Does nothing while it's still ringing.
+   * St. Anne's bell: `strokes` tolls, the last left to ring on a little, then fading away. Plays
+   * `public/church-bell.mp3` if it's there; otherwise a big church bell made here: slow, full strokes
+   * that ring on, with a light echo. Does nothing while it's still ringing.
    */
-  bells(seconds = 7) {
+  bells(strokes = 3) {
     const ctx = this.ctx;
     if (!ctx || !this.master || ctx.currentTime < this.bellsUntil) return;
+    // ring until just after the last stroke, then fade over two seconds (before the recording's next one)
+    const seconds = (strokes - 1) * BELL_FILE_GAP + 4;
     this.bellsUntil = ctx.currentTime + seconds + 2;
     if (typeof Audio !== "undefined") {
       const bell = (this.bellFile ??= new Audio(BELL_FILE));
@@ -236,16 +250,17 @@ export class Ambience {
             }, 80);
           }, seconds * 1000);
         })
-        .catch(() => this.tolls(seconds)); // no file (or it can't play): make the bell instead
+        .catch(() => this.tolls(strokes)); // no file (or it can't play): make the bell instead
       return;
     }
-    this.tolls(seconds);
+    this.tolls(strokes);
   }
 
-  /** A big church bell tolling: a full stroke every 1.8 s, each ringing on for several seconds. */
-  private tolls(seconds: number) {
+  /** A big church bell tolling `strokes` times, a full stroke every 2.4 s, each ringing on for seconds. */
+  private tolls(strokes: number) {
     const ctx = this.ctx!;
     const t0 = ctx.currentTime + 0.05;
+    const seconds = (strokes - 1) * BELL_SYNTH_GAP + 3;
     const end = t0 + seconds;
     const out = ctx.createGain();
     out.gain.setValueAtTime(0.34, t0);
@@ -258,7 +273,7 @@ export class Ambience {
     feedback.gain.value = 0.3;
     out.connect(echo).connect(feedback).connect(echo);
     feedback.connect(this.master!);
-    for (let t = t0; t < end - 0.5; t += 1.8) this.strike(out, t, 392);
+    for (let i = 0; i < strokes; i++) this.strike(out, t0 + i * BELL_SYNTH_GAP, 392);
     window.setTimeout(() => out.disconnect(), (seconds + 3) * 1000);
   }
 
@@ -324,6 +339,126 @@ export class Ambience {
     this.fadeSong(0, () => this.song?.pause());
   }
 
+  /**
+   * The marching band strikes up (looping until `stopBand`). How loud it is follows `bandDistance`,
+   * so it swells as you walk up to them.
+   */
+  playBand() {
+    if (this.bandOn || typeof Audio === "undefined") return;
+    this.bandOn = true;
+    const band = (this.band ??= new Audio(BAND_FILE));
+    band.loop = true;
+    band.muted = this.muted;
+    band.volume = 0;
+    band.currentTime = 0;
+    band.play().catch(() => {
+      // no recording (or it won't play): drums and an oom-pah bass instead
+      if (this.bandOn) this.startBandSynth();
+    });
+  }
+
+  /** The band stops playing (fading out over a second). */
+  stopBand() {
+    this.bandOn = false;
+  }
+
+  /** Each frame while the band is about: how far away they are, for the loudness (and the fades). */
+  bandDistance(dt: number, d: number) {
+    const want = this.bandOn ? Math.max(0, 1 - d / 75) ** 1.6 : 0;
+    this.bandLevel += (want - this.bandLevel) * Math.min(dt * (this.bandOn ? 2 : 1.4), 1);
+    if (this.band && !this.band.paused) {
+      this.band.volume = Math.min(1, this.bandLevel * 0.9);
+      if (!this.bandOn && this.bandLevel < 0.01) this.band.pause();
+    }
+    if (this.bandSynth && this.ctx) {
+      this.bandSynth.out.gain.setTargetAtTime(this.bandLevel * 0.5, this.ctx.currentTime, 0.1);
+      if (!this.bandOn && this.bandLevel < 0.01) {
+        window.clearInterval(this.bandSynth.timer);
+        const out = this.bandSynth.out;
+        window.setTimeout(() => out.disconnect(), 1000);
+        this.bandSynth = null;
+      }
+    }
+  }
+
+  /** A march at 120 beats a minute: snare rolls and accents, a bass drum on the beat, a tuba oom-pah. */
+  private startBandSynth() {
+    const ctx = this.ctx;
+    if (!ctx || !this.master || this.bandSynth) return;
+    const out = ctx.createGain();
+    out.gain.value = 0;
+    out.connect(this.master);
+    const beat = 0.5;
+    // the tuba's line, a bar at a time (F major: F, C, F, C … then up to B-flat and back)
+    const bass = [
+      87.31, 65.41, 87.31, 65.41, 87.31, 65.41, 98, 65.41, 116.54, 87.31, 116.54, 87.31, 98, 65.41, 87.31, 87.31,
+    ];
+    const synth = { out, timer: 0, next: ctx.currentTime + 0.1, beat: 0 };
+    const schedule = () => {
+      while (synth.next < ctx.currentTime + 0.3) {
+        const t = synth.next;
+        const i = synth.beat;
+        if (i % 2 === 0) this.boom(out, t, 0.9);
+        this.snare(out, t, i % 4 === 0 ? 0.9 : 0.55);
+        if (i % 4 === 1 || i % 4 === 3) this.snare(out, t + beat / 2, 0.35);
+        if (i % 8 === 7) for (let r = 1; r < 4; r++) this.snare(out, t + (beat / 4) * r, 0.3);
+        this.tuba(out, t, bass[Math.floor(i / 2) % bass.length] * (i % 2 ? 1.5 : 1), beat * 0.7);
+        synth.next += beat;
+        synth.beat++;
+      }
+    };
+    schedule();
+    synth.timer = window.setInterval(schedule, 100);
+    this.bandSynth = synth;
+  }
+
+  private boom(out: AudioNode, at: number, level: number) {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator();
+    o.frequency.setValueAtTime(90, at);
+    o.frequency.exponentialRampToValueAtTime(45, at + 0.25);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(level, at);
+    g.gain.exponentialRampToValueAtTime(0.001, at + 0.35);
+    o.connect(g).connect(out);
+    o.start(at);
+    o.stop(at + 0.4);
+  }
+
+  private snare(out: AudioNode, at: number, level: number) {
+    const ctx = this.ctx!;
+    if (!this.noise) return;
+    const n = ctx.createBufferSource();
+    n.buffer = this.noise;
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 1800;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(level * 1.6, at);
+    g.gain.exponentialRampToValueAtTime(0.001, at + 0.12);
+    n.connect(hp).connect(g).connect(out);
+    n.start(at, Math.random() * 3);
+    n.stop(at + 0.15);
+  }
+
+  private tuba(out: AudioNode, at: number, f: number, length: number) {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator();
+    o.type = "sawtooth";
+    o.frequency.value = f;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 500;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(0.32, at + 0.03);
+    g.gain.setValueAtTime(0.32, at + length * 0.6);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + length);
+    o.connect(lp).connect(g).connect(out);
+    o.start(at);
+    o.stop(at + length + 0.05);
+  }
+
   private fadeSong(target: number, then?: () => void) {
     const song = this.song!;
     window.clearInterval(this.songFade);
@@ -342,6 +477,9 @@ export class Ambience {
 
   dispose() {
     window.clearInterval(this.songFade);
+    this.band?.pause();
+    this.band = null;
+    if (this.bandSynth) window.clearInterval(this.bandSynth.timer);
     this.song?.pause();
     this.song = null;
     window.clearTimeout(this.bellStop);

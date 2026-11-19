@@ -123,10 +123,12 @@ const up = new Vector3(0, 1, 0);
 
 export class Life {
   readonly group = new Group();
+  /** the faithful praying in St. Anne's pews, in church-local metres: Walk adds this to the interior */
+  readonly worshippers = new Group();
   private walkers: Walker[] = [];
   private still: {
     person: Person;
-    mode: "stand" | "sit" | "kid" | "eat";
+    mode: "stand" | "sit" | "kid" | "eat" | "pray";
     cx: number;
     cz: number;
     phase: number;
@@ -153,6 +155,8 @@ export class Life {
       gate: { x: number; z: number; facing: number };
       /** stools at Jollibee's outdoor tables, each facing its table */
       diners: { x: number; z: number; ry: number }[];
+      /** seats in the church's pews (church-local), and the interior's material so they're lit alike */
+      worship: { seats: { x: number; y: number; z: number }[]; material: Material };
     },
   ) {
     const rand = this.rand;
@@ -265,6 +269,21 @@ export class Life {
       }
     }
     this.still.forEach((s) => this.group.add(s.person.root));
+
+    // the faithful, praying in the pews of St. Anne's, facing the altar (local -z)
+    opts.worship.seats.forEach((seat, i) => {
+      if (opts.lite && i % 2 === 1) return;
+      const look = crowdLook(rand);
+      const p = new Person(
+        { ...look, umbrella: undefined, backpack: undefined, hat: look.hat === "bun" ? "bun" : "none" },
+        opts.worship.material,
+      );
+      p.root.position.set(seat.x, seat.y, seat.z);
+      p.root.rotation.y = Math.PI;
+      p.legL.rotation.x = p.legR.rotation.x = -1.4;
+      this.still.push({ person: p, mode: "pray", cx: 0, cz: 0, phase: i * 1.7 });
+      this.worshippers.add(p.root);
+    });
 
     // pigeons
     const pigeonGeo = wingedGeometry("#8d95a3", "#a7aebb", 0.32, 0.36, 0.08);
@@ -416,6 +435,8 @@ export class Life {
         s.person.root.position.set(x, 0, z);
         s.person.root.rotation.y = Math.atan2(-Math.sin(a), Math.cos(a));
         s.person.animate(dt, 3, t);
+      } else if (s.mode === "pray") {
+        s.person.pray(t, s.phase);
       } else if (s.mode === "eat") {
         s.person.eat(t, s.phase);
       } else if (s.mode === "stand") {
