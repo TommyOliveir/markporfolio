@@ -9,6 +9,9 @@ const BELL_FILE_GAP = 5.9;
 /** The marching band's tune (public/viva.mp3). If it can't play, the band plays a drum cadence and an
  * oom-pah bass made here instead. */
 const BAND_FILE = "/viva.mp3";
+/** Where the music in that file starts and ends (it has 2.2 s of silence before and 1.4 s after). */
+const BAND_START = 2.15;
+const BAND_END = 114.25;
 /** Seconds between strokes of the synthesised bell. */
 const BELL_SYNTH_GAP = 2.4;
 
@@ -28,10 +31,20 @@ export class Ambience {
   private bandOn = false;
   private bandLevel = 0;
   private bandSynth: { out: GainNode; timer: number; next: number; beat: number } | null = null;
+  /** wakes the sound back up after the phone paused it (see `start`) */
+  private wake: (() => void) | null = null;
+  private unwake: (() => void) | null = null;
 
   /** Starts the sound (must be called from a click or key press). */
   start() {
-    if (this.ctx) return;
+    if (this.ctx) {
+      this.wake?.();
+      return;
+    }
+    // iPhones play Web Audio as "ambient" sound, which the ring/silent switch mutes (while the mp3s
+    // still play). Asking for "playback" makes the breeze and the birds play like the songs do.
+    const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+    if (session) session.type = "playback";
     const Ctx =
       window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!Ctx) return;
@@ -40,6 +53,27 @@ export class Ambience {
     this.master = ctx.createGain();
     this.master.gain.value = this.muted ? 0 : 0.8;
     this.master.connect(ctx.destination);
+
+    // Phones suspend the sound when the screen locks, the tab is hidden or a call comes in, and don't
+    // start it again by themselves: resume on coming back, and on the next tap if that wasn't enough.
+    const wake = () => {
+      if (ctx.state !== "running" && ctx.state !== "closed") ctx.resume().catch(() => {});
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") wake();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pointerdown", wake);
+    window.addEventListener("touchend", wake);
+    window.addEventListener("keydown", wake);
+    this.wake = wake;
+    this.unwake = () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pointerdown", wake);
+      window.removeEventListener("touchend", wake);
+      window.removeEventListener("keydown", wake);
+    };
+    wake();
 
     // a few seconds of soft pink noise, looped, for the breeze and the water
     const len = ctx.sampleRate * 4;
@@ -102,7 +136,7 @@ export class Ambience {
 
   /** Each frame: fountain loudness from the distance to the nearest one, and the odd bird. */
   update(dt: number, fountainDistance: number) {
-    if (!this.ctx || !this.water) return;
+    if (!this.ctx || !this.water || this.ctx.state !== "running") return;
     const g = Math.max(0, 1 - fountainDistance / 22) ** 2 * 0.9;
     this.water.gain.setTargetAtTime(g, this.ctx.currentTime, 0.2);
     this.birdTimer -= dt;
@@ -114,9 +148,14 @@ export class Ambience {
 
   private bird() {
     const ctx = this.ctx!;
-    const pan = ctx.createStereoPanner();
-    pan.pan.value = Math.random() * 1.6 - 0.8;
-    pan.connect(this.master!);
+    // a bird off to one side (older Safari has no stereo panner: then straight ahead)
+    let pan: AudioNode = this.master!;
+    if (ctx.createStereoPanner) {
+      const p = ctx.createStereoPanner();
+      p.pan.value = Math.random() * 1.6 - 0.8;
+      p.connect(this.master!);
+      pan = p;
+    }
     const notes = 2 + Math.floor(Math.random() * 4);
     const base = 2600 + Math.random() * 1400;
     let at = ctx.currentTime + 0.05;
@@ -346,15 +385,34 @@ export class Ambience {
   playBand() {
     if (this.bandOn || typeof Audio === "undefined") return;
     this.bandOn = true;
-    const band = (this.band ??= new Audio(BAND_FILE));
-    band.loop = true;
+    const band = this.bandAudio();
     band.muted = this.muted;
     band.volume = 0;
-    band.currentTime = 0;
+    // straight into the music, skipping the silence at the start of the file
+    if (band.readyState >= 1) band.currentTime = BAND_START;
+    else band.addEventListener("loadedmetadata", () => (band.currentTime = BAND_START), { once: true });
     band.play().catch(() => {
       // no recording (or it won't play): drums and an oom-pah bass instead
       if (this.bandOn) this.startBandSynth();
     });
+  }
+
+  /** The band's recording, loaded ahead so it starts the moment they're asked; loops music to music. */
+  private bandAudio() {
+    if (this.band) return this.band;
+    const band = new Audio(BAND_FILE);
+    band.preload = "auto";
+    // round again from the first note when the music ends, not after the silence at the end of the file
+    band.addEventListener("timeupdate", () => {
+      if (band.currentTime >= BAND_END) band.currentTime = BAND_START;
+    });
+    band.addEventListener("ended", () => {
+      band.currentTime = BAND_START;
+      if (this.bandOn) band.play().catch(() => {});
+    });
+    band.load();
+    this.band = band;
+    return band;
   }
 
   /** The band stops playing (fading out over a second). */
@@ -364,8 +422,11 @@ export class Ambience {
 
   /** Each frame while the band is about: how far away they are, for the loudness (and the fades). */
   bandDistance(dt: number, d: number) {
+    // fetch the band's tune once you're getting close (not for everyone who starts walking), so it's
+    // ready to play the moment they're asked
+    if (this.ctx && !this.band && d < 60) this.bandAudio();
     const want = this.bandOn ? Math.max(0, 1 - d / 75) ** 1.6 : 0;
-    this.bandLevel += (want - this.bandLevel) * Math.min(dt * (this.bandOn ? 2 : 1.4), 1);
+    this.bandLevel += (want - this.bandLevel) * Math.min(dt * (this.bandOn ? 6 : 1.4), 1);
     if (this.band && !this.band.paused) {
       this.band.volume = Math.min(1, this.bandLevel * 0.9);
       if (!this.bandOn && this.bandLevel < 0.01) this.band.pause();
@@ -485,6 +546,8 @@ export class Ambience {
     window.clearTimeout(this.bellStop);
     this.bellFile?.pause();
     this.bellFile = null;
+    this.unwake?.();
+    this.unwake = this.wake = null;
     this.ctx?.close();
     this.ctx = null;
   }

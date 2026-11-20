@@ -145,7 +145,8 @@ export const landmarks: Landmark[] = [
     kicker: "Avanceña Street",
     title: "Iloilo Supermart",
     text: "Iloilo's home-grown supermarket, with the Jollibee right across the road. You know the jingle.",
-    music: { src: encodeURI("/Iloilo Supermart Jingle Full.mp3"), start: 12, title: "the Iloilo Supermart jingle" },
+    // mono, 64 kbps, cut to the music (from 12 s into the original recording): 1.8 MB instead of 5.7 MB
+    music: { src: "/supermart-jingle.mp3", start: 0, title: "the Iloilo Supermart jingle" },
   },
 ];
 

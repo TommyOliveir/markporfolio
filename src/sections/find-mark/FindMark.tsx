@@ -21,7 +21,7 @@ const hours = shop.hours.replace("- ", "–");
 
 type Card = "found" | null;
 
-// The intro and "found him" cards: a sheet at the bottom on phones, centred on bigger screens, and
+// The intro card: a sheet at the bottom on phones, centred on bigger screens, and
 // scrollable when the window is too short for them (the auto margins keep the top reachable).
 const OVERLAY =
   "absolute inset-0 z-20 flex flex-col items-center overflow-y-auto overscroll-contain bg-linear-to-t from-ink/50 via-ink/15 to-transparent p-3 sm:p-6";
@@ -32,7 +32,7 @@ export default function FindMark() {
   const [ready, setReady] = useState(false);
   const [started, setStarted] = useState(false);
   const [card, setCard] = useState<Card>(null);
-  // phones show the "found him" card as a short sheet; this opens it up to the full details
+  // the "found him" card's dropdown, with the address and directions
   const [details, setDetails] = useState(false);
   const [landmark, setLandmark] = useState<Landmark | null>(null);
   const [landmarkClosed, setLandmarkClosed] = useState(false);
@@ -371,7 +371,33 @@ export default function FindMark() {
           mansion (the "found him" card already tells that story). */}
       <div className="pointer-events-none absolute inset-x-3 top-48 z-10 sm:top-auto sm:right-auto sm:bottom-16 sm:left-5 sm:w-96">
         <AnimatePresence mode="wait">
-          {showBand && (
+          {/* phones: just a one-line chip, so the band stays in view (the full card is for bigger screens) */}
+          {showBand && phone && (
+            <motion.div
+              key={`band-chip-${marching}`}
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="mx-auto w-fit"
+            >
+              <motion.button
+                type="button"
+                onClick={() => game.askBand(!marching)}
+                onPointerDown={(e) => e.stopPropagation()}
+                // a gentle pulse in time with the music while they're marching
+                animate={marching && !reduced ? { scale: [1, 1.05, 1] } : { scale: 1 }}
+                transition={marching && !reduced ? { duration: 0.5, repeat: Infinity, ease: "easeInOut" } : {}}
+                aria-label={marching ? "Tell the band to stop" : "Ask the band to play"}
+                className={`pointer-events-auto flex h-11 items-center gap-2 rounded-full px-5 text-[0.7rem] tracking-[0.14em] uppercase shadow-lg ${marching ? "bg-ink text-paper" : "bg-gold text-ink"}`}
+              >
+                <span aria-hidden>{marching ? "■" : "♪"}</span>
+                {marching ? "Stop the band" : "Play band"}
+                {marching && muted && <span className="normal-case tracking-normal opacity-75">(sound off)</span>}
+              </motion.button>
+            </motion.div>
+          )}
+          {showBand && !phone && (
             <motion.div
               key="band"
               initial={{ opacity: 0, y: 16, rotate: -1 }}
@@ -634,76 +660,95 @@ export default function FindMark() {
         )}
       </AnimatePresence>
 
-      {/* found him! (or the address, straight away) */}
+      {/* found him! A compact card at the edge of the screen, not a modal, so Mark stays in view: across the
+          top on upright screens (the camera frames Mark low on those, see walk.ts) and in the top-left
+          corner on wide ones (framed a little right of centre). "Details" drops the address and directions
+          down inside the card, scrolling within it rather than growing over him. */}
       <AnimatePresence>
         {card && (
           <motion.div
             key="found"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className={OVERLAY}
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="print absolute z-20 flex max-h-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-2xl portrait:inset-x-3 portrait:top-3 portrait:mx-auto portrait:max-w-lg landscape:top-3 landscape:left-3 landscape:w-80 sm:landscape:top-20 sm:landscape:left-5 sm:landscape:w-96"
+            role="dialog"
+            aria-labelledby="found-title"
           >
-            <motion.div
-              initial={{ y: 40, rotate: 2, scale: 0.96 }}
-              animate={{ y: 0, rotate: 0, scale: 1 }}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              className={CARD}
-              role="dialog"
-              aria-labelledby="found-title"
-            >
-              {/* On phones the card starts as a short sheet (title, hours, buttons) so Mark, the confetti and
-                  the mansion stay in view above it; "Details" opens it up to the full address and directions.
-                  From sm up the whole card shows, centred, as before. */}
-              <p className="caps text-rose-ink">You found him!</p>
+            <div className="shrink-0 p-4 sm:p-5">
+              <p className="caps text-[0.62rem] text-rose-ink">You found him!</p>
               <h2
                 id="found-title"
-                className="font-display mt-2 text-4xl leading-[0.95] font-semibold italic sm:mt-3 sm:text-6xl"
+                className="font-display mt-1 text-2xl leading-tight font-semibold italic sm:text-[2rem]"
               >
                 Mark&apos;s at Molo Mansion
               </h2>
-              {!details && (
-                <p className="mt-3 text-base leading-snug text-ink-soft sm:hidden">
-                  Postcards on sale in person, {hours}.
-                </p>
-              )}
-              <div id="found-details" className={details ? "" : "max-sm:hidden"}>
-                <p className="mt-4 text-lg leading-relaxed text-ink-soft">
-                  Come and find the real thing: Mark&apos;s postcards are on sale at the mansion, in ink and
-                  watercolour, printed on heavy card. Not sold online — so say hi in person.
-                </p>
-                <dl className="mt-5 grid gap-3 border-y border-ink/15 py-4 sm:grid-cols-[auto_1fr] sm:gap-x-6">
-                  <dt className="caps text-[0.65rem] text-ink-faint">Where</dt>
-                  <dd className="-mt-2 sm:mt-0">{shop.address}</dd>
-                  <dt className="caps text-[0.65rem] text-ink-faint">When</dt>
-                  <dd className="-mt-2 sm:mt-0">{hours}</dd>
-                  <dt className="caps text-[0.65rem] text-ink-faint">Look for</dt>
-                  <dd className="-mt-2 sm:mt-0">
-                    The cream mansion with the red dome, across Lopez Jaena Street from Molo Plaza — St. Anne&apos;s
-                    twin spires are on the far side of the square.
-                  </dd>
-                </dl>
-              </div>
-              <div className="mt-5 flex gap-3 sm:mt-7">
+              <p className="mt-1 text-sm leading-snug text-ink-soft sm:text-base">
+                Postcards on sale in person, {hours}.
+              </p>
+              <div className="mt-3 flex gap-2 sm:mt-4">
                 <button
                   type="button"
                   onClick={() => setDetails((d) => !d)}
                   aria-expanded={details}
                   aria-controls="found-details"
-                  className="btn btn-line flex-1 px-3 text-[0.7rem] tracking-[0.12em] whitespace-nowrap sm:hidden"
+                  className="btn btn-line flex-1 gap-1.5 px-3 text-[0.68rem] tracking-[0.12em] whitespace-nowrap"
                 >
-                  {details ? "Less" : "Details"}
+                  Details
+                  <svg
+                    viewBox="0 0 24 24"
+                    className={`size-4 transition-transform ${details ? "rotate-180" : ""}`}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    aria-hidden
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
                 </button>
                 <button
                   type="button"
                   onClick={keepExploring}
-                  className="btn btn-gold flex-1 px-3 text-[0.7rem] tracking-[0.12em] whitespace-nowrap sm:flex-none sm:px-[1.6rem] sm:text-[0.78rem] sm:tracking-[0.2em]"
+                  className="btn btn-gold flex-1 px-3 text-[0.68rem] tracking-[0.12em] whitespace-nowrap"
                   autoFocus
                 >
                   Keep exploring
                 </button>
               </div>
-            </motion.div>
+            </div>
+            <AnimatePresence initial={false}>
+              {details && (
+                <motion.div
+                  id="found-details"
+                  key="details"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: reduced ? 0 : 0.3, ease: [0.22, 1, 0.36, 1] }}
+                  className="min-h-0 overflow-hidden border-t border-ink/15"
+                >
+                  <div className="max-h-[34vh] overflow-y-auto overscroll-contain px-4 pt-3 pb-4 landscape:max-h-[calc(100vh-15rem)] sm:px-5">
+                    <p className="text-sm leading-relaxed text-ink-soft sm:text-base">
+                      Come and find the real thing: Mark&apos;s postcards are on sale at the mansion, in ink and
+                      watercolour, printed on heavy card. Not sold online — so say hi in person.
+                    </p>
+                    <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+                      <dt className="caps pt-0.5 text-[0.6rem] text-ink-faint">Where</dt>
+                      <dd>{shop.address}</dd>
+                      <dt className="caps pt-0.5 text-[0.6rem] text-ink-faint">When</dt>
+                      <dd>{hours}</dd>
+                      <dt className="caps pt-0.5 text-[0.6rem] text-ink-faint">Look for</dt>
+                      <dd>
+                        The cream mansion with the red dome, across Lopez Jaena Street from Molo Plaza — St. Anne&apos;s
+                        twin spires are on the far side of the square.
+                      </dd>
+                    </dl>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>

@@ -182,6 +182,16 @@ export type Vehicle = {
   geometry: BufferGeometry;
 };
 
+/** A closed stretch of street: a line from (ax, az) to (bx, bz), r metres either side. */
+export type Zone = { ax: number; az: number; bx: number; bz: number; r: number };
+
+function inZone(z: Zone, x: number, y: number) {
+  const vx = z.bx - z.ax;
+  const vz = z.bz - z.az;
+  const t = Math.max(0, Math.min(1, ((x - z.ax) * vx + (y - z.az) * vz) / (vx * vx + vz * vz || 1)));
+  return Math.hypot(x - (z.ax + vx * t), y - (z.az + vz * t)) < z.r;
+}
+
 export class Traffic {
   readonly vehicles: Vehicle[] = [];
   readonly group = new Group();
@@ -227,8 +237,22 @@ export class Traffic {
     this.update(0, { x: 1e5, z: 1e5 });
   }
 
-  /** Moves everything on; stops for anything (or anyone: you, the marching band) just ahead. */
-  update(dt: number, player: { x: number; z: number }, others: readonly { x: number; z: number }[] = []) {
+  /** Is any vehicle on this stretch of street? */
+  clearOf(zone: Zone) {
+    return !this.vehicles.some((v) => inZone(zone, v.object.position.x, v.object.position.z));
+  }
+
+  /**
+   * Moves everything on; stops for anything (or anyone: you, the marching band) just ahead. While the
+   * band is out, `closed` is the stretch of street they've taken over: cars wait at its edge, and any
+   * already on it drive on out.
+   */
+  update(
+    dt: number,
+    player: { x: number; z: number },
+    others: readonly { x: number; z: number }[] = [],
+    closed: Zone | null = null,
+  ) {
     for (const v of this.vehicles) {
       const r = v.route;
       let target = v.max;
@@ -254,6 +278,13 @@ export class Traffic {
           v.honked = performance.now();
           this.onHorn?.();
         }
+      } else if (closed && inZone(closed, v.object.position.x, v.object.position.z)) {
+        // already on the closed stretch: keep going, out of the band's way
+      } else if (
+        closed &&
+        [3, 6, 9, 12].some((d) => inZone(closed, v.object.position.x + fx * d, v.object.position.z + fz * d))
+      ) {
+        target = 0; // wait at the edge of the closed stretch
       } else if (others.some(blocks)) target = 0;
       v.speed += (target - v.speed) * Math.min(dt * (target < v.speed ? 4 : 1.2), 1);
       v.s += v.speed * dt;

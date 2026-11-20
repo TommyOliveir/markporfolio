@@ -55,7 +55,12 @@ export class Person {
       [this.legR, -1],
     ] as const) {
       const k = new Kit();
-      k.add(new CylinderGeometry(0.085, 0.075, 0.72, 8).translate(0, -0.36, 0), look.skirt ? look.skin : look.pants);
+      if (look.skirt) {
+        // under a skirt: the upper leg in the skirt's colour (so a stride or a seat never shows bare thigh
+        // through it), bare from just above the hem down
+        k.add(new CylinderGeometry(0.085, 0.08, 0.42, 8).translate(0, -0.21, 0), look.pants);
+        k.add(new CylinderGeometry(0.075, 0.07, 0.3, 8).translate(0, -0.57, 0), look.skin);
+      } else k.add(new CylinderGeometry(0.085, 0.075, 0.72, 8).translate(0, -0.36, 0), look.pants);
       k.box(0.15, 0.09, 0.25, shoes, { y: -0.8, z: 0.04 });
       leg.add(mesh(keep(k), material));
       leg.position.set(side * 0.1, 0.82, 0);
@@ -64,8 +69,12 @@ export class Person {
 
     // body
     const k = new Kit();
-    if (look.skirt) k.add(new ConeGeometry(0.34, 0.62, 14).translate(0, 0.31, 0), look.pants, { y: 0.32 });
-    else k.cyl(0.19, 0.2, 0.18, look.pants, { y: 0.74 }, 12);
+    if (look.skirt) {
+      // a flared skirt from a fitted waist down to mid-calf, wide enough at the hem to walk in
+      k.cyl(0.215, 0.36, 0.56, look.pants, { y: 0.34 }, 18);
+      k.cyl(0.365, 0.365, 0.03, look.pants, { y: 0.34 }, 18); // the hem
+      k.cyl(0.205, 0.205, 0.06, look.pants, { y: 0.86 }, 14); // the waistband
+    } else k.cyl(0.19, 0.2, 0.18, look.pants, { y: 0.74 }, 12);
     k.cyl(0.19, 0.23, 0.52, look.shirt, { y: 0.86 }, 12);
     k.ball(0.2, look.shirt, { y: 1.35, sy: 0.45 });
     k.cyl(0.06, 0.065, 0.1, look.skin, { y: 1.38 }, 8);

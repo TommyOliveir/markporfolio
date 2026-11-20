@@ -20,10 +20,10 @@ import { Confetti, Trail, buildClickRing, buildFlag, buildSigns, buildWaters } f
 import type { Game } from "./game";
 import { loadFonts } from "./labels";
 import { Band } from "./band";
+import { Boy } from "./boy";
 import { Life } from "./life";
 import { buildMarkCorner } from "./mark";
 import { seeThrough, time } from "./materials";
-import { Person } from "./people";
 import { SUN, buildClouds, buildSky } from "./sky";
 import { Traffic } from "./traffic";
 import { ceilingLocal, insideLocal, PLAN, PRAYER_SEATS } from "./church-interior";
@@ -56,7 +56,7 @@ export class Walk {
   private traffic: Traffic;
   private life: Life;
   private band: Band;
-  private player: Person;
+  private player: Boy;
   private corner: ReturnType<typeof buildMarkCorner>;
   private waters: ReturnType<typeof buildWaters>;
   private poolWater: ReturnType<typeof buildWaters>;
@@ -107,11 +107,8 @@ export class Walk {
       worship: { seats: PRAYER_SEATS, material: world.churchInside.material as Material },
     });
     world.churchInside.add(this.life.worshippers); // shown and hidden with the interior
-    this.band = new Band(painted, world.obstacles);
-    this.player = new Person(
-      { skin: "#c68863", hair: "#2b211c", shirt: "#d63c62", pants: "#1a2b52", hat: "straw", backpack: "#f2a516" },
-      painted,
-    );
+    this.band = new Band(painted);
+    this.player = new Boy(painted);
     this.corner = buildMarkCorner(painted);
     world.obstacles.addCircle(MARK.x, MARK.z, 0.4, 2, false);
     for (const [lx, lz, r] of [
@@ -368,6 +365,17 @@ export class Walk {
       const [sx, sz] = toWorld(MANSION, -3.2, 9.5);
       const shot = new Vector3(sx, MARK.y + 3.4, sz);
       const lookAt = new Vector3((MARK.x + game.x) / 2, MARK.y + 1.1, (MARK.z + game.z) / 2);
+      // keep Mark clear of the "found him" card: on an upright screen the card is across the top, so aim
+      // higher and he sits low in the frame; on a wide one it's in the top-left corner, so aim a little to
+      // the left and he sits right of centre
+      if (upright) lookAt.y += 1.9;
+      else {
+        const dx = lookAt.x - shot.x;
+        const dz = lookAt.z - shot.z;
+        const d = Math.hypot(dx, dz) || 1;
+        lookAt.x += (dz / d) * 1.5;
+        lookAt.z -= (dx / d) * 1.5;
+      }
       camera.position.lerpVectors(follow, shot, b);
       camera.lookAt(this.tmp.lerpVectors(target, lookAt, b));
     } else {
@@ -387,7 +395,11 @@ export class Walk {
       sun.target.position.set(game.x, 0, game.z);
       sun.target.updateMatrixWorld();
     }
-    traffic.update(dt, game, this.band.onStreet());
+    // while the band is out, its stretch of Jocson Street is closed to traffic; the band files out once
+    // the cars already on it have driven off
+    const closed = this.band.zone();
+    traffic.update(dt, game, this.band.onStreet(), closed);
+    this.band.streetClear = !closed || traffic.clearOf(closed);
     life.update(dt, t, game);
     this.band.update(dt, t, game);
     confetti.update(dt);
