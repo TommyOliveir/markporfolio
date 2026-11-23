@@ -26,7 +26,8 @@ import { Life } from "./life";
 import { buildMarkCorner } from "./mark";
 import { seeThrough, time } from "./materials";
 import { SUN, buildClouds, buildSky } from "./sky";
-import { Traffic } from "./traffic";
+import { buildCabin, seatCamera } from "./ride";
+import { Traffic, type Vehicle } from "./traffic";
 import { ceilingLocal, insideLocal, PLAN, PRAYER_SEATS } from "./church-interior";
 import {
   CHURCH,
@@ -75,6 +76,16 @@ export class Walk {
   private extras: Circle[] = [];
   private stepDist = 0;
   private landmark: Landmark | null = null;
+  /** the jeepney, tricycle or car you're riding: its cabin, and where your look started from */
+  private ride: {
+    vehicle: Vehicle;
+    cabin: ReturnType<typeof buildCabin>;
+    view: string | null;
+    yaw0: number;
+    pitch0: number;
+  } | null = null;
+  /** the kind of vehicle you could climb into right now (null: none close enough) */
+  private nearKind: Vehicle["kind"] | null = null;
   /** you're in the nave of St. Anne's (the bells ring each time you come in) */
   private inChurch = false;
   private trailClock = 0;
@@ -169,7 +180,8 @@ export class Walk {
     const game = this.game;
     const { world, traffic, life, player, corner, trail, ring, confetti } = this;
     // trees between the camera and the walker thin out so you can always see him
-    seeThrough.on.value = game.started ? 1 : 0;
+    const inSeat = !!this.ride && game.riding !== "outside";
+    seeThrough.on.value = game.started && !inSeat ? 1 : 0;
     seeThrough.target.value.set(game.x, game.y + 1.1, game.z);
 
     if (!this.readySent) {
@@ -178,7 +190,7 @@ export class Walk {
     }
 
     // ---- a click on the scene: walk there -----------------------------------------------------
-    if (game.click && game.started && !game.paused) {
+    if (game.click && game.started && !game.paused && !this.ride) {
       this.raycaster.setFromCamera(new Vector2(game.click.x, game.click.y), camera);
       // (hidden meshes still get hit by a ray, so skip them: inside the church, the outside is hidden)
       const shown = (o: Object3D | null): boolean => !o || (o.visible && shown(o.parent));
@@ -187,9 +199,44 @@ export class Walk {
     }
     game.click = null;
 
+    // ---- the traffic (first, so a vehicle you're riding is where it is this frame) -------------------
+    // while the band is out, its stretch of Jocson Street is closed to traffic; the band files out once
+    // the cars already on it have driven off
+    const closed = this.band.zone();
+    traffic.update(dt, game, this.band.onStreet(), closed);
+    this.band.streetClear = !closed || traffic.clearOf(closed);
+
     // ---- you ----------------------------------------------------------------------------------
     const k = game.keys;
     const playing = game.started && !game.paused;
+
+    // ---- riding: get on, ask to stop ("Para po!"), get off once it has stopped ----------------------
+    if (game.rideRequest === "board" && !this.ride && playing) {
+      const v = traffic.boardable(game.x, game.z);
+      if (v) this.board(v);
+    }
+    if (game.rideRequest === "alight" && this.ride && !traffic.stopRequested) {
+      traffic.stopRequested = true;
+      game.audio.coinTaps();
+    }
+    game.rideRequest = null;
+    if (this.ride) {
+      const v = this.ride.vehicle;
+      // a car or tricycle on a one-way run stops at the end of its street: everybody off
+      if (!v.route.loop && v.s > v.route.length - 12 && !traffic.stopRequested) {
+        traffic.stopRequested = true;
+        game.emit({ type: "notice", text: "End of the line — everybody off!" });
+      }
+      if (traffic.stopRequested && v.speed < 0.2) this.alight();
+    }
+    // a vehicle close enough to climb into (it stops for you when you stand in its way)
+    const hop = playing && !this.ride ? traffic.boardable(game.x, game.z) : null;
+    const hopKind = hop?.kind ?? null;
+    if (hopKind !== this.nearKind) {
+      this.nearKind = hopKind;
+      game.canBoard = !!hop;
+      game.emit({ type: "can-board", near: !!hop, kind: hopKind });
+    }
     let ix =
       (k.has("KeyD") || k.has("ArrowRight") ? 1 : 0) - (k.has("KeyA") || k.has("ArrowLeft") ? 1 : 0) + game.stick.x;
     let iy = (k.has("KeyW") || k.has("ArrowUp") ? 1 : 0) - (k.has("KeyS") || k.has("ArrowDown") ? 1 : 0) + game.stick.y;
@@ -228,57 +275,72 @@ export class Walk {
         speed = AUTO;
       }
     }
-    const accel = Math.min(dt * 10, 1);
-    this.velocity.x += (wantX * speed - this.velocity.x) * accel;
-    this.velocity.z += (wantZ * speed - this.velocity.z) * accel;
-
-    const bx = game.x;
-    const bz = game.z;
-    const p = { x: game.x + this.velocity.x * dt, z: game.z + this.velocity.z * dt };
-    const r = Math.hypot(p.x, p.z);
-    if (r > WORLD_RADIUS) {
-      p.x *= WORLD_RADIUS / r;
-      p.z *= WORLD_RADIUS / r;
-    }
-    const extras = traffic.colliders(this.extras);
-    extras.push(...life.people(), ...this.band.colliders());
-    world.obstacles.resolve(p, RADIUS, extras);
-    game.x = p.x;
-    game.z = p.z;
-    const moved = Math.hypot(game.x - bx, game.z - bz);
-    game.speed = dt > 0 ? moved / dt : 0;
-    if (game.speed > 0.3 && Math.hypot(this.velocity.x, this.velocity.z) > 0.3)
-      game.heading += angleTo(game.heading, Math.atan2(this.velocity.x, this.velocity.z)) * Math.min(dt * 12, 1);
-
-    // jumping, stairs and steps
-    const floor = world.terrain.heightAt(game.x, game.z);
-    const jump = playing && k.has("Space");
-    if (jump && !this.jumpHeld && game.grounded) {
-      game.vy = 5.8;
-      game.grounded = false;
-    }
-    this.jumpHeld = jump;
-    if (!game.grounded) {
-      game.vy -= 17 * dt;
-      game.y += game.vy * dt;
-      if (game.y <= floor) {
-        game.y = floor;
-        game.vy = 0;
-        game.grounded = true;
-        game.audio.step(true);
-      }
+    if (this.ride) {
+      // aboard: you go where the vehicle goes (so the minimap, landmark cards and music follow along)
+      const o = this.ride.vehicle.object;
+      game.x = o.position.x;
+      game.z = o.position.z;
+      game.y = 0;
+      game.speed = 0;
+      game.heading = this.ride.vehicle.heading;
+      game.route = null;
+      game.target = null;
+      this.ride.cabin.update(t, this.ride.vehicle.speed);
+      game.audio.engine(Math.min(1, 0.35 + this.ride.vehicle.speed / 7));
     } else {
-      game.y += (floor - game.y) * Math.min(dt * 14, 1);
-    }
+      const accel = Math.min(dt * 10, 1);
+      this.velocity.x += (wantX * speed - this.velocity.x) * accel;
+      this.velocity.z += (wantZ * speed - this.velocity.z) * accel;
 
-    if (game.grounded && game.speed > 0.5) {
-      this.stepDist += moved;
-      if (this.stepDist > (game.speed > 6 ? 1.15 : 0.8)) {
-        this.stepDist = 0;
-        game.audio.step(game.speed > 6);
+      const bx = game.x;
+      const bz = game.z;
+      const p = { x: game.x + this.velocity.x * dt, z: game.z + this.velocity.z * dt };
+      const r = Math.hypot(p.x, p.z);
+      if (r > WORLD_RADIUS) {
+        p.x *= WORLD_RADIUS / r;
+        p.z *= WORLD_RADIUS / r;
+      }
+      const extras = traffic.colliders(this.extras);
+      extras.push(...life.people(), ...this.band.colliders());
+      world.obstacles.resolve(p, RADIUS, extras);
+      game.x = p.x;
+      game.z = p.z;
+      const moved = Math.hypot(game.x - bx, game.z - bz);
+      game.speed = dt > 0 ? moved / dt : 0;
+      if (game.speed > 0.3 && Math.hypot(this.velocity.x, this.velocity.z) > 0.3)
+        game.heading += angleTo(game.heading, Math.atan2(this.velocity.x, this.velocity.z)) * Math.min(dt * 12, 1);
+
+      // jumping, stairs and steps
+      const floor = world.terrain.heightAt(game.x, game.z);
+      const jump = playing && k.has("Space");
+      if (jump && !this.jumpHeld && game.grounded) {
+        game.vy = 5.8;
+        game.grounded = false;
+      }
+      this.jumpHeld = jump;
+      if (!game.grounded) {
+        game.vy -= 17 * dt;
+        game.y += game.vy * dt;
+        if (game.y <= floor) {
+          game.y = floor;
+          game.vy = 0;
+          game.grounded = true;
+          game.audio.step(true);
+        }
+      } else {
+        game.y += (floor - game.y) * Math.min(dt * 14, 1);
+      }
+
+      if (game.grounded && game.speed > 0.5) {
+        this.stepDist += moved;
+        if (this.stepDist > (game.speed > 6 ? 1.15 : 0.8)) {
+          this.stepDist = 0;
+          game.audio.step(game.speed > 6);
+        }
       }
     }
 
+    player.root.visible = !this.ride;
     player.root.position.set(game.x, game.y, game.z);
     player.root.rotation.y = game.heading;
     player.animate(dt, game.speed, t, !game.grounded);
@@ -314,7 +376,7 @@ export class Walk {
 
     // ---- Mark's lost postcards ------------------------------------------------------------------------
     if (!game.preview) {
-      const picked = this.lostPostcards.update(t, dt, game, playing);
+      const picked = this.lostPostcards.update(t, dt, game, playing && !this.ride);
       if (picked) {
         game.audio.pickup();
         confetti.burst(picked.x, this.world.terrain.heightAt(picked.x, picked.z) + 1.4, picked.z);
@@ -332,7 +394,7 @@ export class Walk {
     // a wider view, from a little further back, on a phone held upright
     const upright = camera instanceof PerspectiveCamera && camera.aspect < 0.9;
     if (camera instanceof PerspectiveCamera) {
-      const fov = upright ? 64 : 50;
+      const fov = inSeat ? (upright ? 80 : 68) : upright ? 64 : 50;
       if (camera.fov !== fov) {
         camera.fov = fov;
         camera.updateProjectionMatrix();
@@ -411,7 +473,31 @@ export class Walk {
       }
       camera.position.lerpVectors(follow, shot, b);
       camera.lookAt(this.tmp.lerpVectors(target, lookAt, b));
+    } else if (this.ride && inSeat && game.riding && game.riding !== "outside") {
+      // in your seat: switching seats (or coming back from outside) starts you looking the seat's way
+      const ride = this.ride;
+      if (ride.view !== game.riding) {
+        ride.view = game.riding;
+        ride.yaw0 = game.yaw;
+        ride.pitch0 = game.pitch;
+        this.showShell(false);
+      }
+      seatCamera(
+        camera,
+        ride.vehicle.object,
+        ride.vehicle.kind,
+        game.riding,
+        game.yaw - ride.yaw0,
+        (game.pitch - ride.pitch0) * 0.8,
+      );
     } else {
+      if (this.ride && this.ride.view !== "outside") {
+        // watching from outside: the vehicle's own shell again, the camera behind it
+        this.ride.view = "outside";
+        game.yaw = this.ride.vehicle.heading;
+        game.pitch = 0.32;
+        this.showShell(true);
+      }
       camera.position.copy(follow);
       // looking up: aim above your head, up to about 30° over the horizon at full tilt, so tall things
       // (the church's spires, the mansion's dome) and the sky come into view without losing the street
@@ -428,11 +514,6 @@ export class Walk {
       sun.target.position.set(game.x, 0, game.z);
       sun.target.updateMatrixWorld();
     }
-    // while the band is out, its stretch of Jocson Street is closed to traffic; the band files out once
-    // the cars already on it have driven off
-    const closed = this.band.zone();
-    traffic.update(dt, game, this.band.onStreet(), closed);
-    this.band.streetClear = !closed || traffic.clearOf(closed);
     life.update(dt, t, game);
     this.band.update(dt, t, game);
     confetti.update(dt);
@@ -520,5 +601,57 @@ export class Walk {
     this.confetti.dispose();
     this.lostPostcards.dispose();
     this.signs?.dispose();
+    this.ride?.cabin.dispose();
+  }
+
+  /** Climbs into a vehicle: its cabin goes on, you sit down, and it carries on with you aboard. */
+  private board(v: Vehicle) {
+    const game = this.game;
+    const cabin = buildCabin(v.kind, v.colors, this.world.painted as Material);
+    v.object.add(cabin.group);
+    this.traffic.rider = v;
+    this.traffic.stopRequested = false;
+    this.ride = { vehicle: v, cabin, view: null, yaw0: 0, pitch0: 0 };
+    game.riding = "passenger";
+    game.route = null;
+    game.target = null;
+    game.pitch = 0.15;
+    game.emit({ type: "ride", view: "passenger", kind: v.kind });
+  }
+
+  /** Steps off on the kerb side once the vehicle has stopped, and puts everything back as it was. */
+  private alight() {
+    const game = this.game;
+    const { vehicle, cabin } = this.ride!;
+    const h = vehicle.heading;
+    // the kerb is on the right (drivers keep right): step off there, clear of the vehicle and anything else
+    const p = {
+      x: vehicle.object.position.x - Math.cos(h) * (vehicle.kind === "jeepney" ? 2.0 : 1.7),
+      z: vehicle.object.position.z + Math.sin(h) * (vehicle.kind === "jeepney" ? 2.0 : 1.7),
+    };
+    this.world.obstacles.resolve(p, RADIUS, this.traffic.colliders(this.extras));
+    game.x = p.x;
+    game.z = p.z;
+    game.y = this.world.terrain.heightAt(p.x, p.z);
+    game.heading = h;
+    game.yaw = h;
+    game.pitch = 0.32;
+    this.velocity.x = this.velocity.z = 0;
+    vehicle.object.remove(cabin.group);
+    cabin.dispose();
+    this.ride = null;
+    this.showShell(true, vehicle);
+    this.traffic.rider = null;
+    this.traffic.stopRequested = false;
+    game.riding = null;
+    game.audio.engine(0);
+    game.emit({ type: "ride", view: null });
+  }
+
+  /** The vehicle's own closed model: hidden while you look from inside, shown from outside. */
+  private showShell(on: boolean, vehicle = this.ride?.vehicle) {
+    if (!vehicle) return;
+    vehicle.object.children[0].visible = on;
+    if (this.ride) this.ride.cabin.group.visible = !on;
   }
 }

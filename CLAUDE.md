@@ -149,6 +149,16 @@ A game-like walk through real Molo, Iloilo City, built mostly with plain three.j
   beam. Walking into one adds it to `game.collected`, plays `Ambience.pickup()` and emits `postcard`.
 - Coming back to Mark with all five emits `quest-done` and shows the quest card.
 
+**Riding the traffic** (`ride.ts`)
+
+- Any jeepney, tricycle or car that stops for you (stand in its lane) can be boarded: "Sakay!" or E.
+- While you ride, the vehicle's closed shell hides and a real-size cabin from `buildCabin` rides on the
+  same object. `seatCamera` puts the camera in a seat; V or the ride bar switches seats or goes outside.
+- "Para po!" or E stops it, and you step off on the kerb side. A car or tricycle on a one-way run stops
+  at the end of its street.
+- `Traffic.rider` / `stopRequested` drive the ridden vehicle. `Walk` runs the traffic update before
+  moving you, so the seat camera never lags.
+
 **Shop signs** come from `signs` in `molo-map.ts`. Each is hung on its building's street-facing wall.
 Optional `street` pins it to the wall facing a named road; `BRAND_COLOURS` in `labels.ts` overrides a
 sign's colours.

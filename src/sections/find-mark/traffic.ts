@@ -16,8 +16,9 @@ import { seeded } from "@/lib/seeded";
 import type { Circle } from "./collide";
 import { Kit } from "./kit";
 import { roads } from "./molo-map";
+import { CRUISE, type RideKind } from "./ride";
 
-type Kind = "jeepney" | "tricycle" | "car";
+type Kind = RideKind;
 
 function road(name: string, first?: [number, number]) {
   const list = roads.filter((r) => r.name === name);
@@ -149,9 +150,11 @@ function tricycle(i: number) {
   return k.build()!;
 }
 
+const CAR_COLORS = ["#f3f1ea", "#9aa3ad", "#c8333a", "#24324d", "#d9c7a0"];
+
 function car(i: number) {
   const k = new Kit();
-  const c = ["#f3f1ea", "#9aa3ad", "#c8333a", "#24324d", "#d9c7a0"][i % 5];
+  const c = CAR_COLORS[i % CAR_COLORS.length];
   k.box(1.8, 0.65, 4.3, c, { y: 0.35 });
   k.box(1.6, 0.6, 2.2, c, { y: 1.0, z: -0.3 });
   k.box(1.62, 0.42, 2.0, "#2f3a46", { y: 1.07, z: -0.3 });
@@ -180,6 +183,8 @@ export type Vehicle = {
   heading: number;
   honked: number;
   geometry: BufferGeometry;
+  /** paint and trim colours, for the cabin you see when you ride it */
+  colors: [string, string];
 };
 
 /** A closed stretch of street: a line from (ax, az) to (bx, bz), r metres either side. */
@@ -195,6 +200,10 @@ function inZone(z: Zone, x: number, y: number) {
 export class Traffic {
   readonly vehicles: Vehicle[] = [];
   readonly group = new Group();
+  /** the jeepney you're riding (it carries on round the loop, a little slower, and won't stop for you) */
+  rider: Vehicle | null = null;
+  /** you said "Para po!": the jeepney you're on pulls in and stops */
+  stopRequested = false;
   /** called with "horn" when a jeepney stops for you */
   onHorn?: () => void;
   private p = new Vector3();
@@ -222,6 +231,12 @@ export class Traffic {
         heading: 0,
         honked: 0,
         geometry,
+        colors:
+          kind === "jeepney"
+            ? [BODY[i % BODY.length], STRIPE[i % STRIPE.length]]
+            : kind === "tricycle"
+              ? [STRIPE[(i + 1) % STRIPE.length], "#262a30"]
+              : [CAR_COLORS[i % CAR_COLORS.length], "#2f3a46"],
       });
     };
     const loopKinds: Kind[] = lite
@@ -235,6 +250,23 @@ export class Traffic {
       spawn(routes.eastbound, kind, i + 5, 0.1 + i * 0.3),
     );
     this.update(0, { x: 1e5, z: 1e5 });
+  }
+
+  /** A jeepney, tricycle or car you could climb into from (x, z): close by, and stopped or nearly. */
+  boardable(x: number, z: number) {
+    let best: Vehicle | null = null;
+    let bestD = Infinity;
+    for (const v of this.vehicles) {
+      if (v.speed > 1.5) continue;
+      const d = Math.hypot(v.object.position.x - x, v.object.position.z - z);
+      // (a vehicle that stopped for you waits about 9 m short of where you stand, so that's in reach too)
+      const reach = v.kind === "jeepney" ? 10.5 : 9.5;
+      if (d < reach && d < bestD) {
+        best = v;
+        bestD = d;
+      }
+    }
+    return best;
   }
 
   /** Is any vehicle on this stretch of street? */
@@ -272,7 +304,11 @@ export class Traffic {
         const ahead = dx * fx + dz * fz;
         return ahead > 0 && ahead < 9 && Math.abs(-dx * fz + dz * fx) < 1.8;
       };
-      if (blocks(player)) {
+      const carrying = v === this.rider;
+      if (carrying) target = this.stopRequested ? 0 : Math.min(target, CRUISE[v.kind]);
+      if (carrying && this.stopRequested) {
+        // pulling in for you to get off
+      } else if (!carrying && blocks(player)) {
         target = 0;
         if (v.speed > 2 && v.kind === "jeepney" && performance.now() - v.honked > 6000) {
           v.honked = performance.now();
@@ -288,7 +324,9 @@ export class Traffic {
       } else if (others.some(blocks)) target = 0;
       v.speed += (target - v.speed) * Math.min(dt * (target < v.speed ? 4 : 1.2), 1);
       v.s += v.speed * dt;
-      if (v.s > r.length) v.s = r.loop ? v.s - r.length : 0;
+      // round the loop again; at the end of a one-way run, back to its start (unless you're aboard: then it
+      // waits at the end of the line for you to get off)
+      if (v.s > r.length) v.s = r.loop ? v.s - r.length : carrying ? r.length : 0;
 
       const u = v.s / r.length;
       r.curve.getPointAt(u, this.p);

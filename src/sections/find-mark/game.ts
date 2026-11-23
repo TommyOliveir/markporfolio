@@ -3,6 +3,7 @@
 // news for the page (you reached a landmark, you found Mark).
 
 import { Ambience } from "./audio";
+import type { RideKind, RideView } from "./ride";
 import type { Obstacles, WalkGrid } from "./collide";
 import { MARK, START, SUPERMART, type Landmark } from "./world";
 
@@ -29,7 +30,13 @@ export type GameEvent =
   /** you picked up one of Mark's lost postcards */
   | { type: "postcard"; id: string; where: string; got: number; total: number }
   /** you brought all the lost postcards back to Mark (after already finding him) */
-  | { type: "quest-done" };
+  | { type: "quest-done" }
+  /** you got on a jeepney (view: where you're looking from), changed seat, or got off (null) */
+  | { type: "ride"; view: RideView | null; kind?: RideKind }
+  /** a jeepney on the plaza loop is (or is no longer) close enough to climb into */
+  | { type: "can-board"; near: boolean; kind: RideKind | null }
+  /** a line of news for the bottom of the screen ("End of the line") */
+  | { type: "notice"; text: string };
 
 export class Game {
   /**
@@ -126,6 +133,32 @@ export class Game {
     this.started = true;
     this.reducedMotion = reducedMotion;
     if (reducedMotion) this.cinematic = null;
+  }
+
+  /** riding a jeepney round the plaza loop: where you're looking from (null when you're on foot) */
+  riding: RideView | null = null;
+  /** what the page asked for, for the scene to carry out: climb on, or get off */
+  rideRequest: "board" | "alight" | null = null;
+  /** a loop jeepney is close enough to climb into */
+  canBoard = false;
+
+  /** "Sakay!" or "Para po!": get on the nearest jeepney, or ask the one you're on to stop. */
+  requestRide() {
+    if (this.riding) this.rideRequest = "alight";
+    else if (this.canBoard) this.rideRequest = "board";
+  }
+
+  /** Sit somewhere else on the jeepney: on the bench, up front, or watching from outside. */
+  setRideView(view: RideView) {
+    if (!this.riding || this.riding === view) return;
+    this.riding = view;
+    this.emit({ type: "ride", view });
+  }
+
+  /** The next view along (the V key). */
+  cycleRideView() {
+    const order: RideView[] = ["passenger", "front", "outside"];
+    if (this.riding) this.setRideView(order[(order.indexOf(this.riding) + 1) % order.length]);
   }
 
   /** A card the page puts up (the quest's story) holds the walk until it's closed. */

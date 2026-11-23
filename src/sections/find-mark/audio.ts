@@ -24,6 +24,7 @@ export class Ambience {
   private muted = false;
   private song: HTMLAudioElement | null = null;
   private bellsUntil = 0;
+  private engineGain: GainNode | null = null;
   private bellFile: HTMLAudioElement | null = null;
   private bellStop = 0;
   private songFade = 0;
@@ -235,6 +236,58 @@ export class Ambience {
       o.connect(g).connect(this.master!);
       o.start(t);
       o.stop(t + 0.75);
+    });
+  }
+
+  /**
+   * The jeepney's diesel rumble while you ride it: 0 is off, 1 is pulling away at speed. Made from the
+   * looped noise, low-passed, with a quick throb for the engine's beat.
+   */
+  engine(level: number) {
+    const ctx = this.ctx;
+    if (!ctx || !this.master || !this.noise) return;
+    if (!this.engineGain) {
+      const src = ctx.createBufferSource();
+      src.buffer = this.noise;
+      src.loop = true;
+      const lp = ctx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = 170;
+      lp.Q.value = 2.5;
+      const throb = ctx.createGain();
+      throb.gain.value = 0.7;
+      const beat = ctx.createOscillator();
+      beat.frequency.value = 11;
+      const depth = ctx.createGain();
+      depth.gain.value = 0.3;
+      beat.connect(depth).connect(throb.gain);
+      const g = ctx.createGain();
+      g.gain.value = 0;
+      src.connect(lp).connect(throb).connect(g).connect(this.master);
+      src.start();
+      beat.start();
+      this.engineGain = g;
+    }
+    this.engineGain.gain.setTargetAtTime(level * 0.55, ctx.currentTime, 0.25);
+  }
+
+  /** Two quick coin taps on the jeepney's rail: how you tell the driver "Para po!" (stop here, please). */
+  coinTaps() {
+    const ctx = this.ctx;
+    if (!ctx || !this.master) return;
+    [0, 0.17].forEach((d) => {
+      const at = ctx.currentTime + d;
+      for (const f of [2650, 4100]) {
+        const o = ctx.createOscillator();
+        o.frequency.value = f;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(f > 3000 ? 0.06 : 0.12, at + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + 0.12);
+        o.connect(g).connect(this.master!);
+        o.start(at);
+        o.stop(at + 0.15);
+      }
     });
   }
 

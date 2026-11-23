@@ -20,6 +20,7 @@ import {
 import { postcardAlt, postcards } from "@/sections/postcards/content";
 import { href, sections } from "@/sections/sections";
 import { Game, type BandState, type GuideTo } from "./game";
+import type { RideKind, RideView } from "./ride";
 import Minimap from "./Minimap";
 import { useMedia, useWebGL } from "./support";
 import { LOST_POSTCARDS, directionsUrl, shop, type Landmark } from "./world";
@@ -50,6 +51,10 @@ export default function FindMark() {
   const [questOn, setQuestOn] = useState(false);
   const storyShown = useRef(false);
   const [pulse, setPulse] = useState(false);
+  // riding the traffic: a vehicle you could climb into, and where you're sitting once aboard
+  const [boardKind, setBoardKind] = useState<RideKind | null>(null);
+  const [riding, setRiding] = useState<RideView | null>(null);
+  const [rideKind, setRideKind] = useState<RideKind>("jeepney");
   // the "found him" card's dropdown, with the address and directions
   const [details, setDetails] = useState(false);
   const [landmark, setLandmark] = useState<Landmark | null>(null);
@@ -157,6 +162,12 @@ export default function FindMark() {
       }
       if (e.type === "guide") setGuiding(e.on ? e.to : null);
       if (e.type === "band") setBand({ state: e.state, near: e.near });
+      if (e.type === "can-board") setBoardKind(e.near ? e.kind : null);
+      if (e.type === "ride") {
+        setRiding(e.view);
+        if (e.kind) setRideKind(e.kind);
+      }
+      if (e.type === "notice") setNotice(e.text);
       if (e.type === "route-failed") setNotice("Can't find a way through from here — try stepping into the open.");
     });
     return () => {
@@ -180,6 +191,14 @@ export default function FindMark() {
       const typing = el?.closest("input, textarea, select");
       const onControl = el?.closest("button, a") && (e.code === "Enter" || e.code === "Space");
       if (typing || onControl || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.code === "KeyE" && !e.repeat) {
+        game.requestRide();
+        return;
+      }
+      if (e.code === "KeyV" && !e.repeat) {
+        game.cycleRideView();
+        return;
+      }
       if (e.code === "KeyG" && !e.repeat) {
         game.guide(!(game.guiding && game.guideTo === "mark"));
         return;
@@ -254,7 +273,9 @@ export default function FindMark() {
     const y = e.clientY - rect.top;
     const hasStick = [...pointers.current.values()].some((p) => p.mode === "stick");
     const mode =
-      e.pointerType === "touch" && !hasStick && x < rect.width * 0.45 && y > rect.height * 0.35 ? "stick" : "look";
+      e.pointerType === "touch" && !riding && !hasStick && x < rect.width * 0.45 && y > rect.height * 0.35
+        ? "stick"
+        : "look";
     pointers.current.set(e.pointerId, {
       x: e.clientX,
       y: e.clientY,
@@ -643,7 +664,15 @@ export default function FindMark() {
           </a>
         </div>
 
-        {started && !card && !story && (
+        {started && !card && !story && riding && (
+          <RideBar
+            kind={rideKind}
+            view={riding}
+            onView={(v) => game.setRideView(v)}
+            onStop={() => game.requestRide()}
+          />
+        )}
+        {started && !card && !story && !riding && (
           <div className="pointer-events-auto flex gap-2 sm:shrink-0 sm:flex-col sm:items-end">
             <AnimatePresence>
               {hint && !touch && (
@@ -701,6 +730,29 @@ export default function FindMark() {
           </div>
         )}
       </div>
+
+      {/* a vehicle has stopped for you: climb in */}
+      <AnimatePresence>
+        {started && !card && !story && !riding && boardKind && (
+          <motion.button
+            key="sakay"
+            type="button"
+            initial={{ opacity: 0, y: 12, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: 12, x: "-50%" }}
+            onClick={() => game.requestRide()}
+            className="btn btn-gold absolute bottom-28 left-1/2 z-10 px-5 whitespace-nowrap shadow-lg sm:bottom-36"
+          >
+            <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M4 16V7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v9M4 16h16M4 12h16" />
+              <circle cx="7.5" cy="18.5" r="1.5" />
+              <circle cx="16.5" cy="18.5" r="1.5" />
+            </svg>
+            Sakay! Ride the {boardKind}
+            <span className="caps hidden rounded bg-ink/15 px-1.5 text-[0.6rem] tracking-normal lg:inline">E</span>
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* how to play */}
       <AnimatePresence>
@@ -1042,6 +1094,60 @@ function Controls({ touch }: { touch: boolean }) {
         </div>
       ))}
     </dl>
+  );
+}
+
+/**
+ * While you're riding: where you are, which seat you're looking from (on the bench, up front, or from
+ * outside), and "Para po!" (the stop request). A bar across the bottom on phones, bottom right on bigger
+ * screens.
+ */
+function RideBar({
+  kind,
+  view,
+  onView,
+  onStop,
+}: {
+  kind: RideKind;
+  view: RideView;
+  onView: (v: RideView) => void;
+  onStop: () => void;
+}) {
+  const seats: [RideView, string][] = [
+    ["passenger", kind === "jeepney" ? "Bench" : kind === "tricycle" ? "Sidecar" : "Back seat"],
+    ["front", kind === "tricycle" ? "Pillion" : "Front"],
+    ["outside", "Outside"],
+  ];
+  return (
+    <div className="pointer-events-auto flex flex-col gap-2 rounded-2xl bg-card/95 p-2.5 shadow-lg backdrop-blur-md sm:min-w-[22rem] sm:p-3">
+      <p className="caps px-1 text-[0.6rem] text-rose-ink">
+        Riding the {kind} · <span className="text-ink-faint">drag to look around</span>
+      </p>
+      <div className="flex gap-2">
+        <div className="flex flex-1 rounded-full bg-paper-deep p-1" role="group" aria-label="Where you're sitting">
+          {seats.map(([v, label]) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => onView(v)}
+              aria-pressed={view === v}
+              className={`caps min-h-11 flex-1 rounded-full px-2 text-[0.62rem] tracking-[0.1em] whitespace-nowrap transition-colors sm:px-3 ${
+                view === v ? "bg-ink text-paper" : "text-ink-soft hover:text-ink"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={onStop}
+          className="btn btn-gold shrink-0 px-4 text-[0.7rem] tracking-[0.12em] whitespace-nowrap"
+        >
+          Para po!
+        </button>
+      </div>
+    </div>
   );
 }
 
