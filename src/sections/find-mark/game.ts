@@ -25,7 +25,11 @@ export type GameEvent =
   | { type: "guide"; on: boolean; to: GuideTo }
   | { type: "route-failed" }
   /** the band changed what it's doing, or you came up to it (or walked off) */
-  | { type: "band"; state: BandState; near: boolean };
+  | { type: "band"; state: BandState; near: boolean }
+  /** you picked up one of Mark's lost postcards */
+  | { type: "postcard"; id: string; where: string; got: number; total: number }
+  /** you brought all the lost postcards back to Mark (after already finding him) */
+  | { type: "quest-done" };
 
 export class Game {
   /**
@@ -73,6 +77,13 @@ export class Game {
   started = false;
   /** you've found Mark (it only counts once) */
   found = false;
+  /** the lost postcards you've picked up (ids from LOST_POSTCARDS), and whether you've brought them all to Mark */
+  readonly collected = new Set<string>();
+  questDone = false;
+  /** Mark has asked you to find his lost postcards (after you found him): until then they're hidden */
+  questStarted = false;
+  /** when the quest's story card was closed (performance.now()), so the minimap can point out the postcards */
+  questHint = 0;
   /** the controls are off while a card is up (the "found him" card) */
   paused = false;
   /** the visitor prefers less motion: no circling camera, no swoops */
@@ -115,6 +126,18 @@ export class Game {
     this.started = true;
     this.reducedMotion = reducedMotion;
     if (reducedMotion) this.cinematic = null;
+  }
+
+  /** A card the page puts up (the quest's story) holds the walk until it's closed. */
+  hold() {
+    this.paused = true;
+  }
+
+  /** Mark has asked you to find his postcards: they appear, the minimap points them out, and you walk on. */
+  startQuest() {
+    this.questStarted = true;
+    this.questHint = performance.now();
+    this.resume();
   }
 
   /** Back to walking after the "found him" card. */

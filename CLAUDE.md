@@ -105,7 +105,7 @@ A game-like walk through real Molo, Iloilo City, built mostly with plain three.j
   - `ground.ts`: roads and terrain, plus `nearestRoad()`
   - `buildings.ts`: buildings extruded from their footprints
   - hand-modelled `church.ts` and `mansion.ts`, placed in their own `Frame`s from `world.ts`
-  - `props.ts`: plaza monuments, kiosks, shop signs, and the Jollibee mascot
+  - `props.ts`: plaza monuments, kiosks, shop signs, and the bee mascot outside the Jollibee
   - `trees.ts`: instanced trees
 - `kit.ts` (`Kit`) builds models from boxes, cylinders and balls, each one flat colour, and merges them
   into a single geometry.
@@ -140,11 +140,20 @@ A game-like walk through real Molo, Iloilo City, built mostly with plain three.j
 - Walking into the nave rings `Ambience.bells()`: it plays `public/church-bell.mp3` if present, otherwise
   a synthesised bell.
 
+**Lost postcards quest** (`quest.ts`)
+
+- It starts once you've found Mark: pressing "Keep exploring" on his card opens a story card in his
+  voice ("The wind took my postcards!"). Closing it sets `game.questStarted`, which shows the postcards,
+  their minimap markers and the counter, and sets `game.questHint`, which makes the markers pulse.
+- Five postcards float over the spots in `LOST_POSTCARDS` (`world.ts`), each with a glow and a gold
+  beam. Walking into one adds it to `game.collected`, plays `Ambience.pickup()` and emits `postcard`.
+- Coming back to Mark with all five emits `quest-done` and shows the quest card.
+
 **Shop signs** come from `signs` in `molo-map.ts`. Each is hung on its building's street-facing wall.
 Optional `street` pins it to the wall facing a named road; `BRAND_COLOURS` in `labels.ts` overrides a
 sign's colours.
 
 **Hand-added map features.** `molo-map.ts` is generated, but some features don't exist in OSM: the
-Jollibee building, its mascot point, and sign overrides. These are added in the "Hand-added" block of
+Jollibee building, the bee mascot's point, and sign overrides. These are added in the "Hand-added" block of
 `build-molo-map.mjs` and mirrored by hand in `molo-map.ts`. Keep both in sync, since the script needs
 network access to re-run. The map data is © OpenStreetMap (ODbL); keep the on-page credit.

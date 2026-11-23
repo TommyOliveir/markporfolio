@@ -7,19 +7,30 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
+import { postcardAlt, postcards } from "@/sections/postcards/content";
 import { href, sections } from "@/sections/sections";
 import { Game, type BandState, type GuideTo } from "./game";
 import Minimap from "./Minimap";
 import { useMedia, useWebGL } from "./support";
-import { directionsUrl, shop, type Landmark } from "./world";
+import { LOST_POSTCARDS, directionsUrl, shop, type Landmark } from "./world";
 
 const Scene = dynamic(() => import("./FindMarkScene"), { ssr: false });
 
 const hours = shop.hours.replace("- ", "–");
 
-type Card = "found" | null;
+// "quest": you brought all the lost postcards back to Mark after already finding him
+type Card = "found" | "quest" | null;
+const TOTAL_POSTCARDS = LOST_POSTCARDS.length;
 
 // The intro card: a sheet at the bottom on phones, centred on bigger screens, and
 // scrollable when the window is too short for them (the auto margins keep the top reachable).
@@ -32,6 +43,13 @@ export default function FindMark() {
   const [ready, setReady] = useState(false);
   const [started, setStarted] = useState(false);
   const [card, setCard] = useState<Card>(null);
+  // how many of Mark's lost postcards you've picked up (the quest)
+  const [got, setGot] = useState(0);
+  // the quest's story card ("The wind took my postcards!"), when you find Mark; then the counter pulses
+  const [story, setStory] = useState(false);
+  const [questOn, setQuestOn] = useState(false);
+  const storyShown = useRef(false);
+  const [pulse, setPulse] = useState(false);
   // the "found him" card's dropdown, with the address and directions
   const [details, setDetails] = useState(false);
   const [landmark, setLandmark] = useState<Landmark | null>(null);
@@ -59,10 +77,44 @@ export default function FindMark() {
   const stickKnob = useRef<HTMLDivElement>(null);
 
   // the band's card takes the landmark card's place while you're with the band
-  const showBand = started && !card && band.near && (!phone || introDone);
+  const showBand = started && !card && !story && band.near && (!phone || introDone);
   const marching = band.state === "gathering" || band.state === "parade";
   const showLandmark =
-    !showBand && landmark !== null && !landmarkClosed && (!phone || (introDone && landmark.id !== "mansion"));
+    !showBand && !story && landmark !== null && !landmarkClosed && (!phone || (introDone && landmark.id !== "mansion"));
+
+  const openStory = useCallback(() => {
+    if (storyShown.current) return;
+    storyShown.current = true;
+    game.hold();
+    setStory(true);
+  }, [game]);
+
+  const closeStory = useCallback(() => {
+    setStory(false);
+    setQuestOn(true);
+    game.startQuest();
+    setPulse(true);
+    stage.current?.focus({ preventScroll: true });
+  }, [game]);
+
+  // the counter's pulse after the story card
+  useEffect(() => {
+    if (!pulse) return;
+    const id = window.setTimeout(() => setPulse(false), 1800);
+    return () => window.clearTimeout(id);
+  }, [pulse]);
+
+  // Enter or Escape closes the story card
+  useEffect(() => {
+    if (!story) return;
+    const key = (e: KeyboardEvent) => {
+      if (e.code !== "Escape" && e.code !== "Enter") return;
+      e.preventDefault();
+      closeStory();
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [story, closeStory]);
 
   // phones: shrink the landmark card to a chip after a few seconds, unless it was opened by hand
   useEffect(() => {
@@ -90,6 +142,18 @@ export default function FindMark() {
         setLandmark(e.landmark);
         setLandmarkClosed(false); // a new place (or coming back to one) shows its card again
         setLandmarkView("auto");
+      }
+      if (e.type === "postcard") {
+        setGot(e.got);
+        setNotice(
+          e.got === e.total
+            ? "All five! Bring them to Mark at Molo Mansion."
+            : `Postcard ${e.got} of ${e.total} — ${e.where}`,
+        );
+      }
+      if (e.type === "quest-done") {
+        setDetails(false);
+        celebrate = window.setTimeout(() => setCard("quest"), 1200);
       }
       if (e.type === "guide") setGuiding(e.on ? e.to : null);
       if (e.type === "band") setBand({ state: e.state, near: e.near });
@@ -152,6 +216,8 @@ export default function FindMark() {
     game.audio.setMuted(muted);
     setStarted(true);
     stage.current?.focus({ preventScroll: true });
+    // with reduced motion there's no swoop down (so no "intro-done" from the scene)
+    if (reduced) setIntroDone(true);
   }
 
   function toggleSound() {
@@ -163,6 +229,11 @@ export default function FindMark() {
 
   function keepExploring() {
     setCard(null);
+    // the first time you leave Mark, he asks you to find the postcards the wind took
+    if (card === "found" && !game.questStarted) {
+      openStory();
+      return;
+    }
     game.resume();
     stage.current?.focus({ preventScroll: true });
   }
@@ -341,6 +412,31 @@ export default function FindMark() {
               <span className="caps hidden text-[0.6rem] tracking-[0.14em] text-ink-faint sm:block">
                 At Molo Mansion · up the stairs
               </span>
+              {/* the lost-postcards quest (once Mark has asked): how many you've picked up */}
+              {questOn && (
+                <motion.span
+                  key={pulse ? "pulse" : "still"}
+                  animate={pulse && !reduced ? { scale: [1, 1.22, 1, 1.14, 1] } : undefined}
+                  transition={{ duration: 1.5, ease: "easeInOut" }}
+                  className={`caps inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.58rem] tracking-[0.12em] transition-colors ${
+                    got === TOTAL_POSTCARDS || pulse ? "bg-gold text-ink" : "bg-paper-deep text-ink-soft"
+                  }`}
+                  aria-label={`${got} of ${TOTAL_POSTCARDS} lost postcards found`}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="size-3"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    aria-hidden
+                  >
+                    <rect x="3" y="5" width="18" height="14" rx="1.5" />
+                    <path d="m3 7 9 6 9-6" />
+                  </svg>
+                  {got}/{TOTAL_POSTCARDS} postcards
+                </motion.span>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -547,7 +643,7 @@ export default function FindMark() {
           </a>
         </div>
 
-        {started && !card && (
+        {started && !card && !story && (
           <div className="pointer-events-auto flex gap-2 sm:shrink-0 sm:flex-col sm:items-end">
             <AnimatePresence>
               {hint && !touch && (
@@ -660,6 +756,9 @@ export default function FindMark() {
         )}
       </AnimatePresence>
 
+      {/* the quest's story: a gust blows Mark's postcards away, then a strip asking you to find them */}
+      <AnimatePresence>{story && <StoryCard onClose={closeStory} reduced={reduced} />}</AnimatePresence>
+
       {/* found him! A compact card at the edge of the screen, not a modal, so Mark stays in view: across the
           top on upright screens (the camera frames Mark low on those, see walk.ts) and in the top-left
           corner on wide ones (framed a little right of centre). "Details" drops the address and directions
@@ -677,16 +776,19 @@ export default function FindMark() {
             aria-labelledby="found-title"
           >
             <div className="shrink-0 p-4 sm:p-5">
-              <p className="caps text-[0.62rem] text-rose-ink">You found him!</p>
+              <p className="caps text-[0.62rem] text-rose-ink">
+                {card === "quest" ? "Quest complete!" : "You found him!"}
+              </p>
               <h2
                 id="found-title"
                 className="font-display mt-1 text-2xl leading-tight font-semibold italic sm:text-[2rem]"
               >
-                Mark&apos;s at Molo Mansion
+                {card === "quest" ? "All his postcards, home" : "Mark\u2019s at Molo Mansion"}
               </h2>
               <p className="mt-1 text-sm leading-snug text-ink-soft sm:text-base">
                 Postcards on sale in person, {hours}.
               </p>
+              {card === "quest" && <PostcardsReward />}
               <div className="mt-3 flex gap-2 sm:mt-4">
                 <button
                   type="button"
@@ -758,6 +860,157 @@ export default function FindMark() {
           Mark&apos;s postcards are at Molo Mansion, {shop.address}, {hours}.
         </p>
       </noscript>
+    </div>
+  );
+}
+
+/**
+ * The lost-postcards story, as you land: five little postcards blow across the screen and away on a
+ * gust (they just sit in a loose fan for visitors who prefer less motion), over a card that says what
+ * happened and how to find them.
+ */
+function StoryCard({ onClose, reduced }: { onClose: () => void; reduced: boolean }) {
+  const stamps = postcards.map((c) => c.stampColor);
+  // where each card blows to (as % of the screen, from the middle), and how far it spins
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const flights = [
+    [-62, -18, -220],
+    [58, -26, 260],
+    [-48, 14, 180],
+    [66, 6, -300],
+    [-70, -4, 320],
+  ];
+  return (
+    <motion.div
+      key="story"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="absolute inset-0 z-20 flex flex-col items-center bg-linear-to-t from-ink/35 via-transparent to-transparent p-3 sm:p-6"
+      role="dialog"
+      aria-labelledby="story-title"
+    >
+      {/* a compact strip along the bottom, so Mark (and the confetti) stay in full view above it */}
+      <motion.div
+        initial={{ y: 40 }}
+        animate={{ y: 0 }}
+        transition={{ duration: 0.6, delay: reduced ? 0 : 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="print mt-auto w-full max-w-2xl shrink-0 rounded-2xl p-4 sm:p-5"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+          <div className="min-w-0 flex-1">
+            <p className="caps text-[0.62rem] text-rose-ink">Mark needs a hand</p>
+            <h2 id="story-title" className="font-display mt-1 text-2xl leading-tight font-semibold italic sm:text-3xl">
+              &ldquo;The wind took my postcards!&rdquo;
+            </h2>
+            <p className="mt-1 text-sm leading-snug text-ink-soft sm:text-base">
+              &ldquo;A gust blew {TOTAL_POSTCARDS} of them across Molo. Could you bring them back here?&rdquo;
+            </p>
+            <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-faint sm:text-sm">
+              <svg
+                viewBox="0 0 24 24"
+                className="size-4 shrink-0 text-gold"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden
+              >
+                <path d="M12 3v18M8 7l4-4 4 4" />
+              </svg>
+              Look for gold beams of light; the map shows where.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn btn-gold w-full shrink-0 px-5 whitespace-nowrap sm:w-auto"
+            autoFocus
+          >
+            I&apos;ll find them
+          </button>
+        </div>
+      </motion.div>
+      {/* the gust, over the card */}
+      <div className="pointer-events-none absolute inset-x-0 top-[16%] z-10 flex h-0 justify-center" aria-hidden>
+        {!reduced && (
+          <svg viewBox="0 0 400 120" className="absolute -top-14 h-28 w-[min(90vw,40rem)]" fill="none">
+            {["M10 40 Q120 10 230 40 T390 30", "M30 75 Q150 50 260 78 T395 70", "M60 100 Q170 85 280 104"].map(
+              (d, i) => (
+                <motion.path
+                  key={d}
+                  d={d}
+                  stroke="#fdfaf3"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  initial={{ pathLength: 0, opacity: 0.9 }}
+                  animate={{ pathLength: 1, opacity: 0 }}
+                  transition={{ duration: 1.3, delay: i * 0.15, ease: "easeOut" }}
+                />
+              ),
+            )}
+          </svg>
+        )}
+        {flights.map(([vx, vy, spin], i) => {
+          const fan = { x: (i - 2) * 52, y: Math.abs(i - 2) * 8, rotate: (i - 2) * 9 };
+          return (
+            <motion.div
+              key={i}
+              className="absolute h-11 w-16 rounded-sm border border-ink/10 bg-[#fbf5e6] shadow-lg"
+              initial={reduced ? fan : { x: 0, y: 0, rotate: 0, opacity: 1, scale: 0.6 }}
+              animate={
+                reduced
+                  ? fan
+                  : {
+                      x: [0, vx * 3, (vx / 100) * width],
+                      y: [0, vy * 3 - 30, (vy / 100) * height],
+                      rotate: [0, spin / 3, spin],
+                      scale: [0.6, 1.1, 1],
+                      opacity: [1, 1, 0],
+                    }
+              }
+              transition={{ duration: 1.7, delay: 0.3 + i * 0.09, ease: "easeOut" }}
+            >
+              <span
+                className="absolute top-1 right-1 h-3 w-2.5 rounded-[1px]"
+                style={{ background: stamps[i % stamps.length] }}
+              />
+              <span className="absolute top-2 left-1.5 h-px w-6 bg-ink/30" />
+              <span className="absolute top-4 left-1.5 h-px w-8 bg-ink/30" />
+              <span className="absolute top-6 left-1.5 h-px w-5 bg-ink/30" />
+            </motion.div>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
+
+/** The quest's reward: Mark's real postcards, and a link to see them all on the site. */
+function PostcardsReward() {
+  const real = postcards.filter((c) => !c.draft);
+  return (
+    <div className="mt-4 flex items-center gap-4 rounded-xl bg-paper-deep p-3">
+      <div className="flex shrink-0 -space-x-6">
+        {real.slice(0, 3).map((c, i) => (
+          <Image
+            key={c.slug}
+            src={c.src}
+            alt={postcardAlt(c)}
+            width={c.size?.width ?? 1200}
+            height={c.size?.height ?? 800}
+            sizes="80px"
+            className={`h-24 w-auto rounded border-4 border-card shadow-md ${i % 2 ? "rotate-3" : "-rotate-3"}`}
+          />
+        ))}
+      </div>
+      <p className="text-base leading-snug text-ink-soft">
+        You collected every postcard the wind blew away. The real ones are on sale at the mansion.{" "}
+        <Link href={href(sections.postcards, true)} className="font-semibold text-rose-ink underline">
+          See Mark&apos;s postcards
+        </Link>
+      </p>
     </div>
   );
 }

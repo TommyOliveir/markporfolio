@@ -195,3 +195,102 @@ export function flagTexture() {
   star(h * 0.72, h / 2, h * 0.04);
   return texture(canvas);
 }
+
+/**
+ * A little postcard, painted for the lost-postcards quest: the front is a loose watercolour of a
+ * Molo scene (sky, roofs, a church with two spires, a sun) with "Molo" in script; the back has
+ * handwriting lines, an address and a stamp in `stamp`.
+ */
+export function postcardTexture(i: number, side: "front" | "back", stamp: string) {
+  const f = fonts();
+  const w = 512;
+  const h = 344;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#fbf5e6";
+  ctx.fillRect(0, 0, w, h);
+  if (side === "front") {
+    const skies = ["#8fd3ef", "#f4b9a0", "#c3b5e8", "#a9dccb", "#f6d48a"];
+    const sky = ctx.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, skies[i % skies.length]);
+    sky.addColorStop(1, "#fbf5e6");
+    ctx.fillStyle = sky;
+    ctx.fillRect(16, 16, w - 32, h - 32);
+    // a sun, and soft blots of colour
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = "#f9c74f";
+    ctx.beginPath();
+    ctx.arc(w * (0.2 + (i % 3) * 0.28), 90, 34, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.35;
+    for (let k = 0; k < 7; k++) {
+      ctx.fillStyle = ["#d63c62", "#1b8e8e", "#f2a516", "#2c56b8"][(k + i) % 4];
+      ctx.beginPath();
+      ctx.arc(40 + ((k * 73 + i * 41) % (w - 80)), 230 + ((k * 37) % 60), 26 + (k % 3) * 10, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    // a row of roofs and a two-spired church in ink
+    ctx.strokeStyle = "#1d1b2a";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(20, 270);
+    for (let x = 20; x < w - 20; x += 46) {
+      ctx.lineTo(x + 23, 238 - ((x + i * 13) % 3) * 8);
+      ctx.lineTo(x + 46, 270);
+    }
+    ctx.stroke();
+    const cx = w * 0.62;
+    ctx.strokeRect(cx - 40, 160, 80, 110);
+    for (const sx of [-1, 1]) {
+      ctx.strokeRect(cx + sx * 52 - 14, 130, 28, 140);
+      ctx.beginPath();
+      ctx.moveTo(cx + sx * 52 - 16, 130);
+      ctx.lineTo(cx + sx * 52, 84);
+      ctx.lineTo(cx + sx * 52 + 16, 130);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(cx, 200, 14, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = "#1d1b2a";
+    ctx.font = `64px ${f.script}`;
+    ctx.fillText("Molo", 34, 316);
+  } else {
+    // the handwritten side: a divider, writing lines on the left, the address and a stamp on the right
+    ctx.strokeStyle = "#c9bfa8";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(w / 2, 30);
+    ctx.lineTo(w / 2, h - 30);
+    ctx.stroke();
+    ctx.strokeStyle = "#5a5568";
+    ctx.lineWidth = 2.5;
+    for (let k = 0; k < 5; k++) {
+      ctx.beginPath();
+      const y = 80 + k * 46;
+      ctx.moveTo(32, y);
+      for (let x = 32; x < w / 2 - 30; x += 12) ctx.lineTo(x, y + Math.sin(x * 0.3 + k + i) * 4);
+      ctx.stroke();
+    }
+    ctx.fillStyle = stamp;
+    ctx.fillRect(w - 118, 34, 84, 100);
+    ctx.strokeStyle = "#fbf5e6";
+    ctx.setLineDash([6, 5]);
+    ctx.strokeRect(w - 112, 40, 72, 88);
+    ctx.setLineDash([]);
+    ctx.strokeStyle = "#c9bfa8";
+    for (let k = 0; k < 3; k++) {
+      ctx.beginPath();
+      ctx.moveTo(w / 2 + 30, 200 + k * 40);
+      ctx.lineTo(w - 34, 200 + k * 40);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#1d1b2a";
+    ctx.font = `28px ${f.script}`;
+    ctx.fillText("to Mark, Molo Mansion", w / 2 + 30, 192);
+  }
+  return texture(canvas);
+}

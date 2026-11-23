@@ -150,6 +150,21 @@ export const landmarks: Landmark[] = [
   },
 ];
 
+/** One of Mark's postcards, blown away across Molo, for the lost-postcards quest. */
+export type LostPostcard = { id: string; x: number; z: number; where: string };
+
+const [altarX, altarZ] = toWorld(CHURCH, 3, -71.5);
+
+/** Five postcards to find and bring back to Mark (see quest.ts). */
+export const LOST_POSTCARDS: LostPostcard[] = [
+  { id: "altar", x: altarX, z: altarZ, where: "at St. Anne's altar" },
+  { id: "fountain", x: 2.6, z: -15.7, where: "by the plaza fountain" },
+  // just outside the gazebo (under its dome it would be hidden)
+  { id: "goddesses", x: -10.4, z: -30.3, where: "by the six goddesses" },
+  { id: "maria-clara", x: 3.3, z: 5.4, where: "at Maria Clara's feet" },
+  { id: "supermart", x: SUPERMART.x + 3, z: SUPERMART.z + 1.5, where: "outside Iloilo Supermart" },
+];
+
 /** The card inside St. Anne's, once you're through the door and into the nave. */
 export const churchInside: Landmark = {
   id: "church-inside",

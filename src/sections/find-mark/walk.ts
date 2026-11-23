@@ -15,6 +15,7 @@ import {
   type Object3D,
 } from "three";
 import { buildWorld } from "./build-world";
+import { LostPostcards } from "./quest";
 import type { Circle } from "./collide";
 import { Confetti, Trail, buildClickRing, buildFlag, buildSigns, buildWaters } from "./effects";
 import type { Game } from "./game";
@@ -30,6 +31,7 @@ import { ceilingLocal, insideLocal, PLAN, PRAYER_SEATS } from "./church-interior
 import {
   CHURCH,
   FOUND_RADIUS,
+  LOST_POSTCARDS,
   MANSION,
   MARK,
   WORLD_RADIUS,
@@ -65,6 +67,7 @@ export class Walk {
   private trail = new Trail();
   private ring = buildClickRing();
   private confetti: Confetti;
+  private lostPostcards: LostPostcards;
   private gridTimer = 0;
   private alive = true;
 
@@ -128,6 +131,7 @@ export class Walk {
     const f = world.props.flag;
     this.flag = f ? buildFlag(f.x, f.z, f.top) : null;
     this.confetti = new Confetti(lite ? 120 : 200);
+    this.lostPostcards = new LostPostcards((x, z) => world.terrain.heightAt(x, z));
 
     this.root.add(
       world.root,
@@ -145,6 +149,7 @@ export class Walk {
       this.confetti.mesh,
     );
     if (this.flag) this.root.add(this.flag.mesh);
+    if (!game.preview) this.root.add(this.lostPostcards.group);
 
     game.attachWorld(world.obstacles);
     // the route planner's grid takes a moment; build it once the first frames are on screen
@@ -154,6 +159,7 @@ export class Walk {
       this.signs = buildSigns(world.props.signPlacements, world.props.welcomeSign);
       this.root.add(this.signs.group);
       this.corner.repaint();
+      if (!game.preview) this.lostPostcards.build();
     });
   }
 
@@ -280,7 +286,18 @@ export class Walk {
     // ---- Mark -----------------------------------------------------------------------------------
     const toMark = game.distanceToMark;
     corner.update(t, game.found, toMark, Math.atan2(game.x - MARK.x, game.z - MARK.z));
-    if (playing && !game.found && toMark < FOUND_RADIUS && game.y > 0.6) {
+    const atMark = toMark < FOUND_RADIUS && game.y > 0.6;
+    const allPostcards = game.collected.size === LOST_POSTCARDS.length;
+    // back at Mark with every lost postcard, after already finding him: the quest's own ending
+    if (playing && game.found && !game.questDone && allPostcards && atMark) {
+      game.questDone = true;
+      game.paused = true;
+      game.route = null;
+      confetti.burst(MARK.x, MARK.y + 2.2, MARK.z);
+      game.audio.found();
+      game.emit({ type: "quest-done" });
+    }
+    if (playing && !game.found && atMark) {
       game.found = true;
       game.paused = true;
       game.route = null;
@@ -293,6 +310,22 @@ export class Walk {
       confetti.burst(MARK.x, MARK.y + 2.2, MARK.z);
       game.audio.found();
       game.emit({ type: "found" });
+    }
+
+    // ---- Mark's lost postcards ------------------------------------------------------------------------
+    if (!game.preview) {
+      const picked = this.lostPostcards.update(t, dt, game, playing);
+      if (picked) {
+        game.audio.pickup();
+        confetti.burst(picked.x, this.world.terrain.heightAt(picked.x, picked.z) + 1.4, picked.z);
+        game.emit({
+          type: "postcard",
+          id: picked.id,
+          where: picked.where,
+          got: game.collected.size,
+          total: LOST_POSTCARDS.length,
+        });
+      }
     }
 
     // ---- the camera -----------------------------------------------------------------------------
@@ -485,6 +518,7 @@ export class Walk {
     this.flag?.dispose();
     this.trail.dispose();
     this.confetti.dispose();
+    this.lostPostcards.dispose();
     this.signs?.dispose();
   }
 }

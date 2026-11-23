@@ -6,7 +6,7 @@
 import { useEffect, useRef } from "react";
 import type { Game } from "./game";
 import { areas, buildings, churchFootprint, mansionFootprint, paths, roads } from "./molo-map";
-import { MARK } from "./world";
+import { LOST_POSTCARDS, MARK } from "./world";
 
 const SIZE = 156; // css pixels
 const SCALE = 1.25; // pixels per metre
@@ -100,6 +100,24 @@ export default function Minimap({ game }: { game: Game }) {
         ctx.setLineDash([3, 3]);
         ctx.stroke();
         ctx.setLineDash([]);
+      }
+
+      // the lost postcards still to find: little cream cards with a gold edge (pulsing big for a few
+      // seconds after the quest's story card, to show where they are)
+      const since = (now - game.questHint) / 1000;
+      const grow = game.questHint && since < 4 ? 1.9 + Math.sin(since * 9) * 0.35 : 1;
+      for (const p of LOST_POSTCARDS) {
+        if (!game.questStarted || game.collected.has(p.id)) continue;
+        ctx.save();
+        ctx.translate(p.x, p.z);
+        ctx.rotate(-(game.yaw - Math.PI));
+        ctx.fillStyle = "#fdfaf3";
+        ctx.strokeStyle = "#e6ab2e";
+        ctx.lineWidth = 1.4;
+        ctx.scale(grow, grow);
+        ctx.fillRect(-3.5, -2.5, 7, 5);
+        ctx.strokeRect(-3.5, -2.5, 7, 5);
+        ctx.restore();
       }
 
       // Mark: a pulsing star

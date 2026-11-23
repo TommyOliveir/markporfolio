@@ -238,6 +238,41 @@ export class Ambience {
     });
   }
 
+  /** Picking up a lost postcard: a quick papery flutter, then a bright two-note chime. */
+  pickup() {
+    const ctx = this.ctx;
+    if (!ctx || !this.master) return;
+    const t = ctx.currentTime;
+    if (this.noise) {
+      const src = ctx.createBufferSource();
+      src.buffer = this.noise;
+      const bp = ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.value = 3200;
+      bp.Q.value = 0.8;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      src.connect(bp).connect(g).connect(this.master);
+      src.start(t, Math.random() * 2);
+      src.stop(t + 0.2);
+    }
+    [1046.5, 1568].forEach((f, i) => {
+      const at = t + 0.12 + i * 0.11;
+      const o = ctx.createOscillator();
+      o.type = "triangle";
+      o.frequency.value = f;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(0.16, at + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + 0.5);
+      o.connect(g).connect(this.master!);
+      o.start(at);
+      o.stop(at + 0.55);
+    });
+  }
+
   /** A soft blip when a landmark card appears. */
   chime() {
     if (!this.ctx) return;
