@@ -19,7 +19,7 @@ import { orientedBox } from "./buildings";
 import { Kit } from "./kit";
 import { food } from "./people";
 import { areas, benches, buildings, gates, paths, points, signs } from "./molo-map";
-import { MANSION, toWorld } from "./world";
+import { BALLOON, MANSION, toWorld } from "./world";
 
 const MARBLE = "#f3efe7";
 const STONE = "#e9e0cf";
@@ -292,6 +292,11 @@ export function buildProps(obstacles: Obstacles) {
         const z = az + uz * t;
         const lx = x - uz * side * 1.75;
         const lz = z + ux * side * 1.75;
+        // keep the hot-air balloon's lawn clear (it needs room to come down)
+        if (Math.hypot(lx - BALLOON.x, lz - BALLOON.z) < 9) {
+          n++;
+          continue;
+        }
         lamp(k, lx, lz);
         obstacles.addCircle(lx, lz, 0.18, 4);
         if (n % 2 === 0) {

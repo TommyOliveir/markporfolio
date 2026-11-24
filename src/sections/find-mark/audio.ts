@@ -271,6 +271,33 @@ export class Ambience {
     this.engineGain.gain.setTargetAtTime(level * 0.55, ctx.currentTime, 0.25);
   }
 
+  /** The balloon's burner: a breathy roar of gas and flame for a second or so, over a low rumble. */
+  burner() {
+    const ctx = this.ctx;
+    if (!ctx || !this.master || !this.noise) return;
+    const t = ctx.currentTime;
+    const src = ctx.createBufferSource();
+    src.buffer = this.noise;
+    const roar = ctx.createBiquadFilter();
+    roar.type = "bandpass";
+    roar.frequency.setValueAtTime(700, t);
+    roar.frequency.linearRampToValueAtTime(950, t + 0.4);
+    roar.Q.value = 0.7;
+    const rumble = ctx.createBiquadFilter();
+    rumble.type = "lowpass";
+    rumble.frequency.value = 140;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.5, t + 0.12);
+    g.gain.setValueAtTime(0.5, t + 1.0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
+    src.connect(roar).connect(g);
+    src.connect(rumble).connect(g);
+    g.connect(this.master);
+    src.start(t, Math.random() * 2);
+    src.stop(t + 1.5);
+  }
+
   /** Two quick coin taps on the jeepney's rail: how you tell the driver "Para po!" (stop here, please). */
   coinTaps() {
     const ctx = this.ctx;

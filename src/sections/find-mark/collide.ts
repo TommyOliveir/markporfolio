@@ -250,6 +250,31 @@ export class WalkGrid {
     return gx >= 0 && gz >= 0 && gx < this.size && gz < this.size && !this.blocked[gz * this.size + gx];
   }
 
+  /**
+   * The nearest open ground to (x, z) with `room` metres clear all round (for setting a balloon down),
+   * searching up to `within` metres away; null if there's none.
+   */
+  openGround(x: number, z: number, room: number, within = 40): [number, number] | null {
+    const [gx, gz] = this.cell(x, z);
+    const reach = Math.ceil(within / RES);
+    const ring = Math.ceil(room / RES);
+    const clear = (cx: number, cz: number) => {
+      for (let dz = -ring; dz <= ring; dz += 2)
+        for (let dx = -ring; dx <= ring; dx += 2) {
+          if (dx * dx + dz * dz > ring * ring) continue;
+          if (!this.free(cx + dx, cz + dz)) return false;
+        }
+      return true;
+    };
+    for (let r = 0; r <= reach; r++)
+      for (let dz = -r; dz <= r; dz++)
+        for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+          if (clear(gx + dx, gz + dz)) return this.centre(gx + dx, gz + dz);
+        }
+    return null;
+  }
+
   /** Nearest open cell to a point (a click on a wall walks you to its foot). */
   private nearestFree(gx: number, gz: number): [number, number] | null {
     if (this.free(gx, gz)) return [gx, gz];

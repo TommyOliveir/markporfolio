@@ -6,7 +6,7 @@
 import { useEffect, useRef } from "react";
 import type { Game } from "./game";
 import { areas, buildings, churchFootprint, mansionFootprint, paths, roads } from "./molo-map";
-import { LOST_POSTCARDS, MARK } from "./world";
+import { BALLOON, LOST_POSTCARDS, MARK } from "./world";
 
 const SIZE = 156; // css pixels
 const SCALE = 1.25; // pixels per metre
@@ -119,6 +119,21 @@ export default function Minimap({ game }: { game: Game }) {
         ctx.strokeRect(-3.5, -2.5, 7, 5);
         ctx.restore();
       }
+
+      // the hot-air balloon: at its lawn, or wherever it is up in the sky
+      ctx.save();
+      ctx.translate(game.flying ? game.x : BALLOON.x, game.flying ? game.z : BALLOON.z);
+      ctx.rotate(-(game.yaw - Math.PI));
+      ctx.beginPath();
+      ctx.arc(0, -2.5, 4.2, 0, Math.PI * 2);
+      ctx.fillStyle = "#f2a516";
+      ctx.fill();
+      ctx.strokeStyle = "#fdfaf3";
+      ctx.lineWidth = 1.1;
+      ctx.stroke();
+      ctx.fillStyle = "#8a5f31";
+      ctx.fillRect(-1.6, 2.6, 3.2, 2.4);
+      ctx.restore();
 
       // Mark: a pulsing star
       const pulse = 1 + Math.sin(t * 4) * 0.15;

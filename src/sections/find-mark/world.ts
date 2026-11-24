@@ -70,6 +70,28 @@ const [churchX, churchZ] = toWorld(CHURCH, 0, 4);
 
 /** In front of Iloilo Supermart, on its Avanceña Street side. */
 export const SUPERMART = { x: -99, z: -50 };
+
+/** Where the hot-air balloon waits, tethered on the open churchyard lawn north of St. Anne's. */
+export const BALLOON = { x: 80, z: -30 };
+
+/**
+ * The balloon's sightseeing loop (x, height, z), starting and ending over its lawn: across the plaza
+ * past the fountain, out to Molo Mansion and Mark, round by the Jollibee and Iloilo Supermart, and home
+ * along the south of the church.
+ */
+export const BALLOON_PATH: [number, number, number][] = [
+  [80, 60, -30],
+  [42, 62, -6],
+  [4, 58, -14],
+  [-30, 60, 12],
+  [-62, 63, 44],
+  [-96, 66, 12],
+  [-100, 64, -42],
+  [-60, 62, -72],
+  [-2, 60, -62],
+  [44, 58, -56],
+  [80, 60, -30],
+];
 const [mansionX, mansionZ] = toWorld(MANSION, 0, 8);
 
 // Real places, with a line or two each, shown when the visitor walks near.
@@ -147,6 +169,15 @@ export const landmarks: Landmark[] = [
     text: "Iloilo's home-grown supermarket, with the Jollibee right across the road. You know the jingle.",
     // mono, 64 kbps, cut to the music (from 12 s into the original recording): 1.8 MB instead of 5.7 MB
     music: { src: "/supermart-jingle.mp3", start: 0, title: "the Iloilo Supermart jingle" },
+  },
+  {
+    id: "balloon",
+    x: BALLOON.x,
+    z: BALLOON.z,
+    radius: 10,
+    kicker: "St. Anne's churchyard",
+    title: "Hot-air balloon",
+    text: "Climb into the basket for a ride high above Molo: the plaza, the mansion and the twin spires from the sky.",
   },
 ];
 

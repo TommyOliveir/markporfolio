@@ -159,6 +159,16 @@ A game-like walk through real Molo, Iloilo City, built mostly with plain three.j
 - `Traffic.rider` / `stopRequested` drive the ridden vehicle. `Walk` runs the traffic update before
   moving you, so the seat camera never lags.
 
+**Hot-air balloon** (`balloon.ts`)
+
+- Tethered at `BALLOON` (`world.ts`), on the open churchyard lawn north of St. Anne's. Trees, lamps and
+  benches are kept clear of it. "Ride the balloon" or E climbs in.
+- `BalloonFlight` rises, drifts the `BALLOON_PATH` loop, and comes down on its lawn.
+  - "Land here" (or E in the air) comes straight down over the nearest open ground, found with
+    `WalkGrid.openGround`. You step out there and the empty balloon floats home.
+  - "Fly home" goes back to the lawn.
+- `balloonCamera` gives the basket and outside views. `Walk` eases the fog back while you're up.
+
 **Shop signs** come from `signs` in `molo-map.ts`. Each is hung on its building's street-facing wall.
 Optional `street` pins it to the wall facing a named road; `BRAND_COLOURS` in `labels.ts` overrides a
 sign's colours.

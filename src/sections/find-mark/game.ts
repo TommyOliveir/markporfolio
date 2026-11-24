@@ -3,6 +3,7 @@
 // news for the page (you reached a landmark, you found Mark).
 
 import { Ambience } from "./audio";
+import type { FlyView } from "./balloon";
 import type { RideKind, RideView } from "./ride";
 import type { Obstacles, WalkGrid } from "./collide";
 import { MARK, START, SUPERMART, type Landmark } from "./world";
@@ -35,6 +36,10 @@ export type GameEvent =
   | { type: "ride"; view: RideView | null; kind?: RideKind }
   /** a jeepney on the plaza loop is (or is no longer) close enough to climb into */
   | { type: "can-board"; near: boolean; kind: RideKind | null }
+  /** you're (or are no longer) close enough to climb into the hot-air balloon */
+  | { type: "balloon"; near: boolean }
+  /** you're up in the balloon (view: basket or outside), or back on the ground (null) */
+  | { type: "flight"; view: FlyView | null }
   /** a line of news for the bottom of the screen ("End of the line") */
   | { type: "notice"; text: string };
 
@@ -142,6 +147,25 @@ export class Game {
   /** a loop jeepney is close enough to climb into */
   canBoard = false;
 
+  /** up in the hot-air balloon: standing in the basket, or watching from outside (null on the ground) */
+  flying: FlyView | null = null;
+  /** what the page asked of the balloon: climb in, come down right here, or go back to its lawn */
+  balloonRequest: "board" | "land" | "home" | null = null;
+  /** close enough to the balloon to climb in */
+  nearBalloon = false;
+
+  /** "Ride the balloon", "Land here" or "Fly home". */
+  requestBalloon(what: "board" | "land" | "home") {
+    if (what === "board" ? this.nearBalloon && !this.flying && !this.riding : !!this.flying) this.balloonRequest = what;
+  }
+
+  /** Stand in the basket, or watch the balloon from outside. */
+  setFlyView(view: FlyView) {
+    if (!this.flying || this.flying === view) return;
+    this.flying = view;
+    this.emit({ type: "flight", view });
+  }
+
   /** "Sakay!" or "Para po!": get on the nearest jeepney, or ask the one you're on to stop. */
   requestRide() {
     if (this.riding) this.rideRequest = "alight";
@@ -155,8 +179,12 @@ export class Game {
     this.emit({ type: "ride", view });
   }
 
-  /** The next view along (the V key). */
+  /** The next view along (the V key): seats on a vehicle, or basket and outside in the balloon. */
   cycleRideView() {
+    if (this.flying) {
+      this.setFlyView(this.flying === "basket" ? "outside" : "basket");
+      return;
+    }
     const order: RideView[] = ["passenger", "front", "outside"];
     if (this.riding) this.setRideView(order[(order.indexOf(this.riding) + 1) % order.length]);
   }

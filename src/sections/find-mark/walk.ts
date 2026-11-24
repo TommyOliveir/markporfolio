@@ -4,6 +4,7 @@
 // and brings the rest of Molo along — jeepneys, people, pigeons, the trail to Mark and the sounds.
 
 import {
+  Fog,
   Group,
   PerspectiveCamera,
   Raycaster,
@@ -26,10 +27,12 @@ import { Life } from "./life";
 import { buildMarkCorner } from "./mark";
 import { seeThrough, time } from "./materials";
 import { SUN, buildClouds, buildSky } from "./sky";
+import { BalloonFlight, PARKED_RADIUS, balloonCamera } from "./balloon";
 import { buildCabin, seatCamera } from "./ride";
 import { Traffic, type Vehicle } from "./traffic";
 import { ceilingLocal, insideLocal, PLAN, PRAYER_SEATS } from "./church-interior";
 import {
+  BALLOON,
   CHURCH,
   FOUND_RADIUS,
   LOST_POSTCARDS,
@@ -84,6 +87,9 @@ export class Walk {
     yaw0: number;
     pitch0: number;
   } | null = null;
+  /** the hot-air balloon on the churchyard lawn, and your flight in it (where your look started from) */
+  private balloon: BalloonFlight;
+  private flight: { view: string | null; yaw0: number; pitch0: number } | null = null;
   /** the kind of vehicle you could climb into right now (null: none close enough) */
   private nearKind: Vehicle["kind"] | null = null;
   /** you're in the nave of St. Anne's (the bells ring each time you come in) */
@@ -142,6 +148,7 @@ export class Walk {
     const f = world.props.flag;
     this.flag = f ? buildFlag(f.x, f.z, f.top) : null;
     this.confetti = new Confetti(lite ? 120 : 200);
+    this.balloon = new BalloonFlight(painted, (x, z) => world.terrain.heightAt(x, z));
     this.lostPostcards = new LostPostcards((x, z) => world.terrain.heightAt(x, z));
 
     this.root.add(
@@ -161,6 +168,7 @@ export class Walk {
     );
     if (this.flag) this.root.add(this.flag.mesh);
     if (!game.preview) this.root.add(this.lostPostcards.group);
+    this.root.add(this.balloon.group);
 
     game.attachWorld(world.obstacles);
     // the route planner's grid takes a moment; build it once the first frames are on screen
@@ -180,8 +188,8 @@ export class Walk {
     const game = this.game;
     const { world, traffic, life, player, corner, trail, ring, confetti } = this;
     // trees between the camera and the walker thin out so you can always see him
-    const inSeat = !!this.ride && game.riding !== "outside";
-    seeThrough.on.value = game.started && !inSeat ? 1 : 0;
+    const inSeat = (!!this.ride && game.riding !== "outside") || game.flying === "basket";
+    seeThrough.on.value = game.started && !inSeat && !this.flight ? 1 : 0;
     seeThrough.target.value.set(game.x, game.y + 1.1, game.z);
 
     if (!this.readySent) {
@@ -190,7 +198,7 @@ export class Walk {
     }
 
     // ---- a click on the scene: walk there -----------------------------------------------------
-    if (game.click && game.started && !game.paused && !this.ride) {
+    if (game.click && game.started && !game.paused && !this.ride && !this.flight) {
       this.raycaster.setFromCamera(new Vector2(game.click.x, game.click.y), camera);
       // (hidden meshes still get hit by a ray, so skip them: inside the church, the outside is hidden)
       const shown = (o: Object3D | null): boolean => !o || (o.visible && shown(o.parent));
@@ -237,6 +245,31 @@ export class Walk {
       game.canBoard = !!hop;
       game.emit({ type: "can-board", near: !!hop, kind: hopKind });
     }
+
+    // ---- the hot-air balloon: climb in, "Land here" (over the nearest open ground), "Fly home" -----
+    const balloon = this.balloon;
+    if (game.balloonRequest === "board" && playing && !this.flight && !this.ride && balloon.emptyAtHome) this.takeOff();
+    if (game.balloonRequest === "land" && this.flight) {
+      const b = balloon.position;
+      balloon.landAt(game.walkGrid?.openGround(b.x, b.z, 4.5) ?? [BALLOON.x, BALLOON.z]);
+    }
+    if (game.balloonRequest === "home" && this.flight) balloon.flyHome();
+    game.balloonRequest = null;
+    balloon.update(dt, t, game.reducedMotion);
+    if (balloon.burst && (this.flight || Math.hypot(balloon.position.x - game.x, balloon.position.z - game.z) < 40))
+      game.audio.burner();
+    balloon.settle();
+    if (this.flight && balloon.touchedDown) this.stepOut();
+    const byBalloon =
+      playing &&
+      !this.flight &&
+      !this.ride &&
+      balloon.emptyAtHome &&
+      Math.hypot(game.x - BALLOON.x, game.z - BALLOON.z) < PARKED_RADIUS + 2.2;
+    if (byBalloon !== game.nearBalloon) {
+      game.nearBalloon = byBalloon;
+      game.emit({ type: "balloon", near: byBalloon });
+    }
     let ix =
       (k.has("KeyD") || k.has("ArrowRight") ? 1 : 0) - (k.has("KeyA") || k.has("ArrowLeft") ? 1 : 0) + game.stick.x;
     let iy = (k.has("KeyW") || k.has("ArrowUp") ? 1 : 0) - (k.has("KeyS") || k.has("ArrowDown") ? 1 : 0) + game.stick.y;
@@ -275,7 +308,16 @@ export class Walk {
         speed = AUTO;
       }
     }
-    if (this.ride) {
+    if (this.flight) {
+      // up in the balloon: you go where it goes (the minimap, landmark cards and music follow along)
+      game.x = balloon.position.x;
+      game.z = balloon.position.z;
+      game.y = 0;
+      game.speed = 0;
+      game.heading = balloon.facing;
+      game.route = null;
+      game.target = null;
+    } else if (this.ride) {
       // aboard: you go where the vehicle goes (so the minimap, landmark cards and music follow along)
       const o = this.ride.vehicle.object;
       game.x = o.position.x;
@@ -302,6 +344,7 @@ export class Walk {
       }
       const extras = traffic.colliders(this.extras);
       extras.push(...life.people(), ...this.band.colliders());
+      if (balloon.emptyAtHome) extras.push({ x: BALLOON.x, z: BALLOON.z, r: PARKED_RADIUS, h: 3 });
       world.obstacles.resolve(p, RADIUS, extras);
       game.x = p.x;
       game.z = p.z;
@@ -340,8 +383,9 @@ export class Walk {
       }
     }
 
-    player.root.visible = !this.ride;
+    player.root.visible = !this.ride && game.flying !== "basket";
     player.root.position.set(game.x, game.y, game.z);
+    if (this.flight) player.root.position.copy(balloon.position).setY(balloon.position.y + 0.1); // in the basket
     player.root.rotation.y = game.heading;
     player.animate(dt, game.speed, t, !game.grounded);
 
@@ -376,7 +420,7 @@ export class Walk {
 
     // ---- Mark's lost postcards ------------------------------------------------------------------------
     if (!game.preview) {
-      const picked = this.lostPostcards.update(t, dt, game, playing && !this.ride);
+      const picked = this.lostPostcards.update(t, dt, game, playing && !this.ride && !this.flight);
       if (picked) {
         game.audio.pickup();
         confetti.burst(picked.x, this.world.terrain.heightAt(picked.x, picked.z) + 1.4, picked.z);
@@ -473,6 +517,15 @@ export class Walk {
       }
       camera.position.lerpVectors(follow, shot, b);
       camera.lookAt(this.tmp.lerpVectors(target, lookAt, b));
+    } else if (this.flight && game.flying) {
+      // in the balloon: switching views starts you looking the default way for that view
+      const f = this.flight;
+      if (f.view !== game.flying) {
+        f.view = game.flying;
+        f.yaw0 = game.yaw;
+        f.pitch0 = game.pitch;
+      }
+      balloonCamera(camera, balloon, game.flying, game.yaw - f.yaw0, (game.pitch - f.pitch0) * 0.9);
     } else if (this.ride && inSeat && game.riding && game.riding !== "outside") {
       // in your seat: switching seats (or coming back from outside) starts you looking the seat's way
       const ride = this.ride;
@@ -506,6 +559,13 @@ export class Walk {
     }
 
     // ---- the world around you -------------------------------------------------------------------
+    // from up in the balloon the haze eases back so the whole of Molo shows, and closes in again after
+    const fog = (this.root.parent as { fog?: unknown } | null)?.fog;
+    if (fog instanceof Fog) {
+      const up = this.flight ? 1 : 0;
+      fog.near += (90 + up * 110 - fog.near) * Math.min(dt * 0.8, 1);
+      fog.far += (360 + up * 200 - fog.far) * Math.min(dt * 0.8, 1);
+    }
     this.sky.position.copy(camera.position);
     this.clouds.rotation.y += dt * 0.0025;
     if (sun) {
@@ -602,6 +662,41 @@ export class Walk {
     this.lostPostcards.dispose();
     this.signs?.dispose();
     this.ride?.cabin.dispose();
+    this.balloon.dispose();
+  }
+
+  /** Into the basket, and up. */
+  private takeOff() {
+    const game = this.game;
+    this.flight = { view: null, yaw0: 0, pitch0: 0 };
+    game.flying = "basket";
+    game.route = null;
+    game.target = null;
+    game.yaw = this.balloon.facing;
+    game.pitch = 0.2;
+    this.balloon.liftOff();
+    game.audio.burner();
+    game.emit({ type: "flight", view: "basket" });
+  }
+
+  /** Down on the ground: step out beside the basket, clear of anything, and walk on. */
+  private stepOut() {
+    const game = this.game;
+    const b = this.balloon.position;
+    const h = this.balloon.facing;
+    const p = { x: b.x + Math.sin(h) * 2.4, z: b.z + Math.cos(h) * 2.4 };
+    this.world.obstacles.resolve(p, RADIUS, this.traffic.colliders(this.extras));
+    game.x = p.x;
+    game.z = p.z;
+    game.y = this.world.terrain.heightAt(p.x, p.z);
+    game.heading = h;
+    game.yaw = h + Math.PI; // looking back at the balloon as it goes
+    game.pitch = 0.32;
+    this.velocity.x = this.velocity.z = 0;
+    this.flight = null;
+    game.flying = null;
+    this.balloon.release();
+    game.emit({ type: "flight", view: null });
   }
 
   /** Climbs into a vehicle: its cabin goes on, you sit down, and it carries on with you aboard. */

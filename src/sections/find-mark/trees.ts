@@ -21,7 +21,7 @@ import { nearestRoad } from "./ground";
 import { Kit } from "./kit";
 import { swayMaterial } from "./materials";
 import { areas, buildings, churchFootprint, mansionFootprint, paths, treeRows, trees as treePoints } from "./molo-map";
-import { MANSION, SUPERMART, toWorld } from "./world";
+import { BALLOON, MANSION, SUPERMART, toWorld } from "./world";
 
 type Kind = "rain" | "palm" | "mango" | "bush" | "bloom";
 type Spot = { x: number; z: number; kind: Kind; scale: number; turn: number; tint: number };
@@ -247,7 +247,9 @@ export function buildTrees(obstacles: Obstacles, lite: boolean) {
 
   // keep the stretch of Avanceña Street between Iloilo Supermart and the Jollibee clear, so you can see
   // the supermarket's front (filtered afterwards, so the rest of town keeps the same trees)
-  const clear = (s: Spot) => Math.hypot(s.x - SUPERMART.x, s.z - (SUPERMART.z + 8)) > 16;
+  // (and the churchyard lawn where the hot-air balloon is tethered)
+  const clear = (s: Spot) =>
+    Math.hypot(s.x - SUPERMART.x, s.z - (SUPERMART.z + 8)) > 16 && Math.hypot(s.x - BALLOON.x, s.z - BALLOON.z) > 12;
   spots.splice(0, spots.length, ...spots.filter(clear));
 
   for (const s of spots)

@@ -20,6 +20,7 @@ import {
 import { postcardAlt, postcards } from "@/sections/postcards/content";
 import { href, sections } from "@/sections/sections";
 import { Game, type BandState, type GuideTo } from "./game";
+import type { FlyView } from "./balloon";
 import type { RideKind, RideView } from "./ride";
 import Minimap from "./Minimap";
 import { useMedia, useWebGL } from "./support";
@@ -55,6 +56,9 @@ export default function FindMark() {
   const [boardKind, setBoardKind] = useState<RideKind | null>(null);
   const [riding, setRiding] = useState<RideView | null>(null);
   const [rideKind, setRideKind] = useState<RideKind>("jeepney");
+  // the hot-air balloon: standing by it, and flying in it
+  const [nearBalloon, setNearBalloon] = useState(false);
+  const [flying, setFlying] = useState<FlyView | null>(null);
   // the "found him" card's dropdown, with the address and directions
   const [details, setDetails] = useState(false);
   const [landmark, setLandmark] = useState<Landmark | null>(null);
@@ -167,6 +171,8 @@ export default function FindMark() {
         setRiding(e.view);
         if (e.kind) setRideKind(e.kind);
       }
+      if (e.type === "balloon") setNearBalloon(e.near);
+      if (e.type === "flight") setFlying(e.view);
       if (e.type === "notice") setNotice(e.text);
       if (e.type === "route-failed") setNotice("Can't find a way through from here — try stepping into the open.");
     });
@@ -192,7 +198,10 @@ export default function FindMark() {
       const onControl = el?.closest("button, a") && (e.code === "Enter" || e.code === "Space");
       if (typing || onControl || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.code === "KeyE" && !e.repeat) {
-        game.requestRide();
+        // in the balloon: come down here; by the balloon: climb in; otherwise hop on (or off) a vehicle
+        if (game.flying) game.requestBalloon("land");
+        else if (game.nearBalloon) game.requestBalloon("board");
+        else game.requestRide();
         return;
       }
       if (e.code === "KeyV" && !e.repeat) {
@@ -273,7 +282,7 @@ export default function FindMark() {
     const y = e.clientY - rect.top;
     const hasStick = [...pointers.current.values()].some((p) => p.mode === "stick");
     const mode =
-      e.pointerType === "touch" && !riding && !hasStick && x < rect.width * 0.45 && y > rect.height * 0.35
+      e.pointerType === "touch" && !riding && !flying && !hasStick && x < rect.width * 0.45 && y > rect.height * 0.35
         ? "stick"
         : "look";
     pointers.current.set(e.pointerId, {
@@ -664,7 +673,15 @@ export default function FindMark() {
           </a>
         </div>
 
-        {started && !card && !story && riding && (
+        {started && !card && !story && flying && (
+          <FlightBar
+            view={flying}
+            onView={(v) => game.setFlyView(v)}
+            onLand={() => game.requestBalloon("land")}
+            onHome={() => game.requestBalloon("home")}
+          />
+        )}
+        {started && !card && !story && riding && !flying && (
           <RideBar
             kind={rideKind}
             view={riding}
@@ -672,7 +689,7 @@ export default function FindMark() {
             onStop={() => game.requestRide()}
           />
         )}
-        {started && !card && !story && !riding && (
+        {started && !card && !story && !riding && !flying && (
           <div className="pointer-events-auto flex gap-2 sm:shrink-0 sm:flex-col sm:items-end">
             <AnimatePresence>
               {hint && !touch && (
@@ -733,7 +750,24 @@ export default function FindMark() {
 
       {/* a vehicle has stopped for you: climb in */}
       <AnimatePresence>
-        {started && !card && !story && !riding && boardKind && (
+        {started && !card && !story && !riding && !flying && nearBalloon && (
+          <motion.button
+            key="balloon"
+            type="button"
+            initial={{ opacity: 0, y: 12, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: 12, x: "-50%" }}
+            onClick={() => game.requestBalloon("board")}
+            className="btn btn-gold absolute bottom-28 left-1/2 z-10 px-5 whitespace-nowrap shadow-lg sm:bottom-36"
+          >
+            <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M12 2a7 7 0 0 0-7 7c0 4 4 7 5 9h4c1-2 5-5 5-9a7 7 0 0 0-7-7ZM10 18l.5 3h3l.5-3" />
+            </svg>
+            Ride the balloon
+            <span className="caps hidden rounded bg-ink/15 px-1.5 text-[0.6rem] tracking-normal lg:inline">E</span>
+          </motion.button>
+        )}
+        {started && !card && !story && !riding && !flying && !nearBalloon && boardKind && (
           <motion.button
             key="sakay"
             type="button"
@@ -1146,6 +1180,72 @@ function RideBar({
         >
           Para po!
         </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * While you're up in the balloon: where you're looking from (the basket, or outside), and the two ways
+ * down: "Land here" (straight down over the nearest open ground) and "Fly home" (back to the churchyard
+ * lawn). A bar across the bottom on phones, bottom right on bigger screens.
+ */
+function FlightBar({
+  view,
+  onView,
+  onLand,
+  onHome,
+}: {
+  view: FlyView;
+  onView: (v: FlyView) => void;
+  onLand: () => void;
+  onHome: () => void;
+}) {
+  const views: [FlyView, string][] = [
+    ["basket", "Basket"],
+    ["outside", "Outside"],
+  ];
+  return (
+    <div className="pointer-events-auto flex flex-col gap-2 rounded-2xl bg-card/95 p-2.5 shadow-lg backdrop-blur-md sm:min-w-[24rem] sm:p-3">
+      <p className="caps px-1 text-[0.6rem] text-rose-ink">
+        Ballooning over Molo · <span className="text-ink-faint">drag to look around</span>
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <div
+          className="flex min-w-[9rem] flex-1 rounded-full bg-paper-deep p-1"
+          role="group"
+          aria-label="Where you're looking from"
+        >
+          {views.map(([v, label]) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => onView(v)}
+              aria-pressed={view === v}
+              className={`caps min-h-11 flex-1 rounded-full px-2 text-[0.62rem] tracking-[0.1em] whitespace-nowrap transition-colors sm:px-3 ${
+                view === v ? "bg-ink text-paper" : "text-ink-soft hover:text-ink"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-1 gap-2">
+          <button
+            type="button"
+            onClick={onLand}
+            className="btn btn-gold min-h-11 flex-1 px-3 text-[0.68rem] tracking-[0.12em] whitespace-nowrap"
+          >
+            Land here
+          </button>
+          <button
+            type="button"
+            onClick={onHome}
+            className="btn btn-line min-h-11 flex-1 bg-card px-3 text-[0.68rem] tracking-[0.12em] whitespace-nowrap"
+          >
+            Fly home
+          </button>
+        </div>
       </div>
     </div>
   );
