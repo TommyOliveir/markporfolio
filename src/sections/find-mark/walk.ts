@@ -47,7 +47,7 @@ import {
 } from "./world";
 
 const WALK = 4.2;
-const RUN = 7.6;
+const RUN = 9.5;
 const AUTO = 5.2;
 const RADIUS = 0.35;
 
