@@ -37,7 +37,7 @@
   --animate-drift: drift 14s ease-in-out infinite;
   /* Hero entrance: pure CSS so the text appears as soon as the page paints, without waiting for JavaScript. */
   --animate-rise: rise 1s ease-out both;
-  --animate-rise-blur: rise-blur 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-rise-blur: rise-blur 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
   @keyframes twinkle {
     0%,
     100% {
@@ -53,11 +53,13 @@
       transform: translateY(12px);
     }
   }
+  /* The hero's big name: it settles into place out of a soft focus, but is visible from the very first
+     frame (never opacity 0), so the browser counts it as painted straight away (Largest Contentful Paint). */
   @keyframes rise-blur {
     from {
-      opacity: 0;
-      transform: translateY(24px);
-      filter: blur(8px);
+      opacity: 0.85;
+      transform: translateY(16px);
+      filter: blur(6px);
     }
   }
   @keyframes drift {

@@ -150,7 +150,7 @@ export default function Hero() {
             Flying Treehouse &nbsp;·&nbsp; Iloilo City
           </span>
           <span className="sr-only"> — </span>
-          <span className="font-display mt-3 block animate-rise-blur [animation-delay:0.35s] motion-reduce:animate-none text-[clamp(5rem,17vw,11rem)] leading-[0.9] font-medium tracking-tight">
+          <span className="font-display mt-3 block animate-rise-blur motion-reduce:animate-none text-[clamp(5rem,17vw,11rem)] leading-[0.9] font-medium tracking-tight">
             {site.artist}
           </span>
         </h1>
