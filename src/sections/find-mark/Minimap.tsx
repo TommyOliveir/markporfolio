@@ -120,6 +120,34 @@ export default function Minimap({ game }: { game: Game }) {
         ctx.restore();
       }
 
+      // the pancit stall, while Mark's waiting for his bowl: a steaming bowl (pulsing big for a few
+      // seconds after he asks)
+      if (game.errand === "fetch") {
+        const since = (now - game.errandHint) / 1000;
+        const grow = since < 4 ? 1.9 + Math.sin(since * 9) * 0.35 : 1;
+        ctx.save();
+        ctx.translate(game.pancit.x, game.pancit.z);
+        ctx.rotate(-(game.yaw - Math.PI));
+        ctx.scale(grow, grow);
+        ctx.beginPath();
+        ctx.arc(0, 0, 3.6, 0, Math.PI);
+        ctx.closePath();
+        ctx.fillStyle = "#fdfaf3";
+        ctx.fill();
+        ctx.strokeStyle = "#e6ab2e";
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+        ctx.beginPath();
+        for (const x of [-1.4, 1.4]) {
+          ctx.moveTo(x, -1);
+          ctx.quadraticCurveTo(x + 1, -2.6, x, -4.2);
+        }
+        ctx.strokeStyle = "#e6ab2e";
+        ctx.lineWidth = 1.1;
+        ctx.stroke();
+        ctx.restore();
+      }
+
       // the hot-air balloon: at its lawn, or wherever it is up in the sky
       ctx.save();
       ctx.translate(game.flying ? game.x : BALLOON.x, game.flying ? game.z : BALLOON.z);

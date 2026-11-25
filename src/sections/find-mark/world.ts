@@ -71,6 +71,14 @@ const [churchX, churchZ] = toWorld(CHURCH, 0, 4);
 /** In front of Iloilo Supermart, on its Avanceña Street side. */
 export const SUPERMART = { x: -99, z: -50 };
 
+/**
+ * Kap Ising's Pancit Molo, south-east of the plaza, where you fetch Mark a bowl for the pancit errand (see
+ * errand.ts). This is its point on the map; the walk sets up the stall in front of its sign.
+ */
+export const PANCIT = { x: 53.2, z: 47.6 };
+/** Seconds a bowl of pancit molo stays hot on foot (half as fast in a vehicle, twice as fast in the balloon). */
+export const ERRAND_TIME = 75;
+
 /** Where the hot-air balloon waits, tethered on the open churchyard lawn north of St. Anne's. */
 export const BALLOON = { x: 80, z: -30 };
 

@@ -6,11 +6,17 @@ import { Ambience } from "./audio";
 import type { FlyView } from "./balloon";
 import type { RideKind, RideView } from "./ride";
 import type { Obstacles, WalkGrid } from "./collide";
-import { MARK, START, SUPERMART, type Landmark } from "./world";
+import { LOST_POSTCARDS, MARK, PANCIT, START, SUPERMART, type Landmark } from "./world";
 
-/** Where "show me the way" can lead: to Mark, or to Iloilo Supermart. */
-export type GuideTo = "mark" | "supermart";
-const DESTINATIONS: Record<GuideTo, { x: number; z: number }> = { mark: MARK, supermart: SUPERMART };
+/** Where "show me the way" can lead: to Mark, to Iloilo Supermart, or to the pancit stall (the errand). */
+export type GuideTo = "mark" | "supermart" | "pancit";
+const DESTINATIONS: Record<Exclude<GuideTo, "pancit">, { x: number; z: number }> = { mark: MARK, supermart: SUPERMART };
+
+/**
+ * The pancit errand, after the lost postcards: off until Mark asks, then fetching a bowl from Kap
+ * Ising's, carrying it back to him while it's hot, and done once he has it.
+ */
+export type ErrandStage = "off" | "fetch" | "carry" | "done";
 
 /**
  * The marching band by the convent: standing at ease beside the church, filing out to the street once
@@ -32,6 +38,8 @@ export type GameEvent =
   | { type: "postcard"; id: string; where: string; got: number; total: number }
   /** you brought all the lost postcards back to Mark (after already finding him) */
   | { type: "quest-done" }
+  /** the pancit errand moved on (at "done": whether the soup was still hot) */
+  | { type: "errand"; stage: ErrandStage; hot?: boolean }
   /** you got on a jeepney (view: where you're looking from), changed seat, or got off (null) */
   | { type: "ride"; view: RideView | null; kind?: RideKind }
   /** a jeepney on the plaza loop is (or is no longer) close enough to climb into */
@@ -96,6 +104,14 @@ export class Game {
   questStarted = false;
   /** when the quest's story card was closed (performance.now()), so the minimap can point out the postcards */
   questHint = 0;
+  /** the pancit errand, how hot the bowl is (1 fresh from the pot, 0 cold), and when Mark asked */
+  errand: ErrandStage = "off";
+  heat = 1;
+  errandHint = 0;
+  /** where you pick up the bowl (the walk moves it in front of the stall once it's built) */
+  pancit = { x: PANCIT.x, z: PANCIT.z };
+  /** the middle of the stall's counter */
+  pancitStall = { x: PANCIT.x, z: PANCIT.z };
   /** the controls are off while a card is up (the "found him" card) */
   paused = false;
   /** the visitor prefers less motion: no circling camera, no swoops */
@@ -113,7 +129,7 @@ export class Game {
   readonly audio = new Ambience();
 
   /** Little elements on the page the scene updates every frame without re-rendering React. */
-  readonly hud: { distance?: HTMLElement | null; arrow?: HTMLElement | null } = {};
+  readonly hud: { distance?: HTMLElement | null; arrow?: HTMLElement | null; heat?: HTMLElement | null } = {};
 
   private listeners = new Set<(e: GameEvent) => void>();
 
@@ -201,6 +217,48 @@ export class Game {
     this.resume();
   }
 
+  /** Mark is hungry: the pancit stall lights up, the minimap points it out, and you walk on. */
+  startErrand() {
+    if (this.errand !== "off") return;
+    this.setErrand("fetch");
+    this.errandHint = performance.now();
+    this.resume();
+  }
+
+  /**
+   * Dev only (the "Test: pancit" button): skips the postcards quest, starts the errand, and puts you a
+   * few metres in front of the stall, facing it. While you're carrying the bowl, it just takes you back.
+   */
+  testPancit() {
+    this.found = true;
+    this.questStarted = true;
+    this.questDone = true;
+    LOST_POSTCARDS.forEach((p) => this.collected.add(p.id));
+    this.cinematic = null;
+    this.route = null;
+    this.target = null;
+    if (this.guiding) this.guide(false);
+    // stand back from the counter, out the way the stall faces
+    const s = this.pancitStall;
+    const dx = this.pancit.x - s.x;
+    const dz = this.pancit.z - s.z;
+    this.x = s.x + dx * 2.2;
+    this.z = s.z + dz * 2.2;
+    this.heading = Math.atan2(-dx, -dz);
+    this.yaw = this.heading;
+    this.pitch = 0.32;
+    if (this.errand !== "carry") {
+      this.errand = "off";
+      this.heat = 1;
+      this.startErrand();
+    } else this.resume();
+  }
+
+  setErrand(stage: ErrandStage, hot?: boolean) {
+    this.errand = stage;
+    this.emit({ type: "errand", stage, hot });
+  }
+
   /** Back to walking after the "found him" card. */
   resume() {
     this.paused = false;
@@ -227,7 +285,7 @@ export class Game {
     this.click = { x, y };
   }
 
-  attachHud(key: "distance" | "arrow", el: HTMLElement | null) {
+  attachHud(key: "distance" | "arrow" | "heat", el: HTMLElement | null) {
     this.hud[key] = el;
   }
 
@@ -255,7 +313,7 @@ export class Game {
 
   /** where the trail leads while guiding */
   get destination() {
-    return DESTINATIONS[this.guideTo];
+    return this.guideTo === "pancit" ? this.pancit : DESTINATIONS[this.guideTo];
   }
 
   /** Asks the band to strike up and march (or to stop and go back). */

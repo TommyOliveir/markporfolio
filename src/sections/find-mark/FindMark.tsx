@@ -18,8 +18,8 @@ import {
   type ReactNode,
 } from "react";
 import { postcardAlt, postcards } from "@/sections/postcards/content";
-import { href, sections } from "@/sections/sections";
-import { Game, type BandState, type GuideTo } from "./game";
+import { href, pages, sections } from "@/sections/sections";
+import { Game, type BandState, type ErrandStage, type GuideTo } from "./game";
 import type { FlyView } from "./balloon";
 import type { RideKind, RideView } from "./ride";
 import Minimap from "./Minimap";
@@ -31,7 +31,10 @@ const Scene = dynamic(() => import("./FindMarkScene"), { ssr: false });
 const hours = shop.hours.replace("- ", "–");
 
 // "quest": you brought all the lost postcards back to Mark after already finding him
-type Card = "found" | "quest" | null;
+// "pancit": you brought him his bowl of pancit molo (the errand after the postcards)
+type Card = "found" | "quest" | "pancit" | null;
+// Mark's stories, when he asks for a hand: the postcards the wind took, then a bowl of pancit
+type Story = "postcards" | "pancit";
 const TOTAL_POSTCARDS = LOST_POSTCARDS.length;
 
 // The intro card: a sheet at the bottom on phones, centred on bigger screens, and
@@ -47,8 +50,11 @@ export default function FindMark() {
   const [card, setCard] = useState<Card>(null);
   // how many of Mark's lost postcards you've picked up (the quest)
   const [got, setGot] = useState(0);
-  // the quest's story card ("The wind took my postcards!"), when you find Mark; then the counter pulses
-  const [story, setStory] = useState(false);
+  // the quest's story card ("The wind took my postcards!"), when you find Mark; then the counter pulses.
+  // After the postcards, the pancit errand's ("Gutom na ako!"), then the bowl's heat in the top bar.
+  const [story, setStory] = useState<Story | null>(null);
+  const [errand, setErrand] = useState<ErrandStage>("off");
+  const [hot, setHot] = useState(true);
   const [questOn, setQuestOn] = useState(false);
   const storyShown = useRef(false);
   const [pulse, setPulse] = useState(false);
@@ -91,20 +97,26 @@ export default function FindMark() {
   const showLandmark =
     !showBand && !story && landmark !== null && !landmarkClosed && (!phone || (introDone && landmark.id !== "mansion"));
 
-  const openStory = useCallback(() => {
-    if (storyShown.current) return;
-    storyShown.current = true;
-    game.hold();
-    setStory(true);
-  }, [game]);
+  const openStory = useCallback(
+    (kind: Story) => {
+      if (kind === "postcards" ? storyShown.current : game.errand !== "off") return;
+      if (kind === "postcards") storyShown.current = true;
+      game.hold();
+      setStory(kind);
+    },
+    [game],
+  );
 
   const closeStory = useCallback(() => {
-    setStory(false);
-    setQuestOn(true);
-    game.startQuest();
+    if (story === "pancit") game.startErrand();
+    else {
+      setQuestOn(true);
+      game.startQuest();
+    }
+    setStory(null);
     setPulse(true);
     stage.current?.focus({ preventScroll: true });
-  }, [game]);
+  }, [game, story]);
 
   // the counter's pulse after the story card
   useEffect(() => {
@@ -159,6 +171,15 @@ export default function FindMark() {
             ? "All five! Bring them to Mark at Molo Mansion."
             : `Postcard ${e.got} of ${e.total} — ${e.where}`,
         );
+      }
+      if (e.type === "errand") {
+        setErrand(e.stage);
+        if (e.stage === "carry") setNotice("Got it! Now hurry it to Mark while it\u2019s hot.");
+        if (e.stage === "done") {
+          setHot(!!e.hot);
+          setDetails(false);
+          celebrate = window.setTimeout(() => setCard("pancit"), 1200);
+        }
       }
       if (e.type === "quest-done") {
         setDetails(false);
@@ -255,11 +276,27 @@ export default function FindMark() {
     game.audio.setMuted(m);
   }
 
+  /** Dev only: straight to the pancit stall, with the errand on (see Game.testPancit). */
+  function testPancit() {
+    setCard(null);
+    setStory(null);
+    setFoundOnce(true);
+    setQuestOn(true);
+    setGot(TOTAL_POSTCARDS);
+    game.testPancit();
+    stage.current?.focus({ preventScroll: true });
+  }
+
   function keepExploring() {
     setCard(null);
     // the first time you leave Mark, he asks you to find the postcards the wind took
     if (card === "found" && !game.questStarted) {
-      openStory();
+      openStory("postcards");
+      return;
+    }
+    // and once you've brought them all back, he's hungry
+    if (card === "quest" && game.errand === "off") {
+      openStory("pancit");
       return;
     }
     game.resume();
@@ -411,6 +448,16 @@ export default function FindMark() {
         >
           ←<span className="hidden sm:inline"> Back to the site</span>
         </Link>
+        {/* dev only (stripped from production builds): jump to the pancit errand */}
+        {process.env.NODE_ENV === "development" && started && (
+          <button
+            type="button"
+            onClick={testPancit}
+            className="caps pointer-events-auto absolute top-24 left-3 min-h-11 rounded-full border-2 border-dashed border-ink/40 bg-card/90 px-3.5 text-[0.62rem] tracking-[0.14em] whitespace-nowrap shadow-md backdrop-blur-md sm:top-[4.75rem] sm:left-5"
+          >
+            Test: pancit
+          </button>
+        )}
 
         <AnimatePresence>
           {started && (
@@ -443,7 +490,37 @@ export default function FindMark() {
                 At Molo Mansion · up the stairs
               </span>
               {/* the lost-postcards quest (once Mark has asked): how many you've picked up */}
-              {questOn && (
+              {/* the pancit errand: the bowl's heat while you carry it */}
+              {errand === "carry" && (
+                <span
+                  className="caps inline-flex items-center gap-1.5 rounded-full bg-paper-deep px-2.5 py-1 text-[0.58rem] tracking-[0.12em] text-ink-soft"
+                  role="img"
+                  aria-label="Carrying Mark's pancit molo: hurry before it goes cold"
+                >
+                  <BowlIcon className="size-3.5" />
+                  <span className="hidden sm:inline">Pancit</span>
+                  <span className="h-1.5 w-12 overflow-hidden rounded-full bg-ink/10 sm:w-16" aria-hidden>
+                    <span
+                      ref={(el) => game.attachHud("heat", el)}
+                      className="block h-full w-full origin-left rounded-full bg-[#e0612f]"
+                    />
+                  </span>
+                </span>
+              )}
+              {/* Mark's waiting on his pancit: where to get it */}
+              {errand === "fetch" && (
+                <motion.span
+                  key={pulse ? "pulse" : "still"}
+                  animate={pulse && !reduced ? { scale: [1, 1.22, 1, 1.14, 1] } : undefined}
+                  transition={{ duration: 1.5, ease: "easeInOut" }}
+                  className="caps inline-flex items-center gap-1.5 rounded-full bg-gold px-2.5 py-1 text-[0.58rem] tracking-[0.12em] whitespace-nowrap text-ink"
+                >
+                  <BowlIcon className="size-3.5" />
+                  <span className="sm:hidden">Get Mark pancit</span>
+                  <span className="hidden sm:inline">Pancit from Kap Ising&apos;s</span>
+                </motion.span>
+              )}
+              {questOn && (errand === "off" || errand === "done") && (
                 <motion.span
                   key={pulse ? "pulse" : "still"}
                   animate={pulse && !reduced ? { scale: [1, 1.22, 1, 1.14, 1] } : undefined}
@@ -723,27 +800,54 @@ export default function FindMark() {
                 </>
               )}
             </button>
-            <button
-              type="button"
-              onClick={() => game.guide(guiding !== "supermart", "supermart")}
-              className={`btn ${guiding === "supermart" ? "btn-ink" : "btn-line bg-card/95 backdrop-blur-sm"} px-3 text-[0.68rem] tracking-[0.12em] whitespace-nowrap shadow-lg max-sm:flex-1 max-sm:gap-2 sm:px-[1.6rem] sm:text-[0.78rem] sm:tracking-[0.2em]`}
-            >
-              <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-                <path d="M3 4h2l2.4 10.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6.2" />
-                <circle cx="9.5" cy="19" r="1.4" />
-                <circle cx="17" cy="19" r="1.4" />
-              </svg>
-              {guiding === "supermart" ? (
-                <>
-                  Hide <span className="hidden sm:inline">the</span> trail
-                </>
-              ) : (
-                <>
-                  <span className="sm:hidden">Supermart</span>
-                  <span className="hidden sm:inline">Go to Iloilo Supermart</span>
-                </>
-              )}
-            </button>
+            {errand === "fetch" ? (
+              <button
+                type="button"
+                onClick={() => game.guide(guiding !== "pancit", "pancit")}
+                className={`btn ${guiding === "pancit" ? "btn-ink" : "btn-line bg-card/95 backdrop-blur-sm"} px-3 text-[0.68rem] tracking-[0.12em] whitespace-nowrap shadow-lg max-sm:flex-1 max-sm:gap-2 sm:px-[1.6rem] sm:text-[0.78rem] sm:tracking-[0.2em]`}
+              >
+                <BowlIcon className="size-4" />
+                {guiding === "pancit" ? (
+                  <>
+                    Hide <span className="hidden sm:inline">the</span> trail
+                  </>
+                ) : (
+                  <>
+                    <span className="sm:hidden">Pancit</span>
+                    <span className="hidden sm:inline">Go to Kap Ising&apos;s</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => game.guide(guiding !== "supermart", "supermart")}
+                className={`btn ${guiding === "supermart" ? "btn-ink" : "btn-line bg-card/95 backdrop-blur-sm"} px-3 text-[0.68rem] tracking-[0.12em] whitespace-nowrap shadow-lg max-sm:flex-1 max-sm:gap-2 sm:px-[1.6rem] sm:text-[0.78rem] sm:tracking-[0.2em]`}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="size-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden
+                >
+                  <path d="M3 4h2l2.4 10.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6.2" />
+                  <circle cx="9.5" cy="19" r="1.4" />
+                  <circle cx="17" cy="19" r="1.4" />
+                </svg>
+                {guiding === "supermart" ? (
+                  <>
+                    Hide <span className="hidden sm:inline">the</span> trail
+                  </>
+                ) : (
+                  <>
+                    <span className="sm:hidden">Supermart</span>
+                    <span className="hidden sm:inline">Go to Iloilo Supermart</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -843,7 +947,7 @@ export default function FindMark() {
       </AnimatePresence>
 
       {/* the quest's story: a gust blows Mark's postcards away, then a strip asking you to find them */}
-      <AnimatePresence>{story && <StoryCard onClose={closeStory} reduced={reduced} />}</AnimatePresence>
+      <AnimatePresence>{story && <StoryCard kind={story} onClose={closeStory} reduced={reduced} />}</AnimatePresence>
 
       {/* found him! A compact card at the edge of the screen, not a modal, so Mark stays in view: across the
           top on upright screens (the camera frames Mark low on those, see walk.ts) and in the top-left
@@ -863,18 +967,25 @@ export default function FindMark() {
           >
             <div className="shrink-0 p-4 sm:p-5">
               <p className="caps text-[0.62rem] text-rose-ink">
-                {card === "quest" ? "Quest complete!" : "You found him!"}
+                {card === "pancit" ? "Delivered!" : card === "quest" ? "Quest complete!" : "You found him!"}
               </p>
               <h2
                 id="found-title"
                 className="font-display mt-1 text-2xl leading-tight font-semibold italic sm:text-[2rem]"
               >
-                {card === "quest" ? "All his postcards, home" : "Mark\u2019s at Molo Mansion"}
+                {card === "pancit"
+                  ? hot
+                    ? "Mainit pa! Still hot"
+                    : "A bit cold \u2014 salamat gihapon!"
+                  : card === "quest"
+                    ? "All his postcards, home"
+                    : "Mark\u2019s at Molo Mansion"}
               </h2>
               <p className="mt-1 text-sm leading-snug text-ink-soft sm:text-base">
                 Postcards on sale in person, {hours}.
               </p>
               {card === "quest" && <PostcardsReward />}
+              {card === "pancit" && <PancitReward hot={hot} />}
               <div className="mt-3 flex gap-2 sm:mt-4">
                 <button
                   type="button"
@@ -950,12 +1061,31 @@ export default function FindMark() {
   );
 }
 
+/** What Mark says when he asks for a hand. */
+const STORIES: Record<Story, { kicker: string; title: string; line: string; hint: string; button: string }> = {
+  postcards: {
+    kicker: "Mark needs a hand",
+    title: "\u201cThe wind took my postcards!\u201d",
+    line: `\u201cA gust blew ${TOTAL_POSTCARDS} of them across Molo. Could you bring them back here?\u201d`,
+    hint: "Look for gold beams of light; the map shows where.",
+    button: "I\u2019ll find them",
+  },
+  pancit: {
+    kicker: "Mark needs a hand (again)",
+    title: "\u201cGutom na ako!\u201d",
+    line: "\u201cAll that painting made me hungry. Could you get me a bowl of pancit molo from Kap Ising\u2019s, south-east of the plaza? Bring it while it\u2019s hot!\u201d",
+    hint: "Follow the gold beam. A jeepney keeps it warm; the balloon cools it fast.",
+    button: "On my way",
+  },
+};
+
 /**
- * The lost-postcards story, as you land: five little postcards blow across the screen and away on a
- * gust (they just sit in a loose fan for visitors who prefer less motion), over a card that says what
- * happened and how to find them.
+ * Mark's stories, as you land. For the lost postcards, five little postcards blow across the screen and
+ * away on a gust (they just sit in a loose fan for visitors who prefer less motion), over a card that says
+ * what happened and how to find them. For the pancit, the card alone.
  */
-function StoryCard({ onClose, reduced }: { onClose: () => void; reduced: boolean }) {
+function StoryCard({ kind, onClose, reduced }: { kind: Story; onClose: () => void; reduced: boolean }) {
+  const copy = STORIES[kind];
   const stamps = postcards.map((c) => c.stampColor);
   // where each card blows to (as % of the screen, from the middle), and how far it spins
   const width = window.innerWidth;
@@ -986,13 +1116,11 @@ function StoryCard({ onClose, reduced }: { onClose: () => void; reduced: boolean
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
           <div className="min-w-0 flex-1">
-            <p className="caps text-[0.62rem] text-rose-ink">Mark needs a hand</p>
+            <p className="caps text-[0.62rem] text-rose-ink">{copy.kicker}</p>
             <h2 id="story-title" className="font-display mt-1 text-2xl leading-tight font-semibold italic sm:text-3xl">
-              &ldquo;The wind took my postcards!&rdquo;
+              {copy.title}
             </h2>
-            <p className="mt-1 text-sm leading-snug text-ink-soft sm:text-base">
-              &ldquo;A gust blew {TOTAL_POSTCARDS} of them across Molo. Could you bring them back here?&rdquo;
-            </p>
+            <p className="mt-1 text-sm leading-snug text-ink-soft sm:text-base">{copy.line}</p>
             <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-faint sm:text-sm">
               <svg
                 viewBox="0 0 24 24"
@@ -1005,7 +1133,7 @@ function StoryCard({ onClose, reduced }: { onClose: () => void; reduced: boolean
               >
                 <path d="M12 3v18M8 7l4-4 4 4" />
               </svg>
-              Look for gold beams of light; the map shows where.
+              {copy.hint}
             </p>
           </div>
           <button
@@ -1014,61 +1142,63 @@ function StoryCard({ onClose, reduced }: { onClose: () => void; reduced: boolean
             className="btn btn-gold w-full shrink-0 px-5 whitespace-nowrap sm:w-auto"
             autoFocus
           >
-            I&apos;ll find them
+            {copy.button}
           </button>
         </div>
       </motion.div>
       {/* the gust, over the card */}
-      <div className="pointer-events-none absolute inset-x-0 top-[16%] z-10 flex h-0 justify-center" aria-hidden>
-        {!reduced && (
-          <svg viewBox="0 0 400 120" className="absolute -top-14 h-28 w-[min(90vw,40rem)]" fill="none">
-            {["M10 40 Q120 10 230 40 T390 30", "M30 75 Q150 50 260 78 T395 70", "M60 100 Q170 85 280 104"].map(
-              (d, i) => (
-                <motion.path
-                  key={d}
-                  d={d}
-                  stroke="#fdfaf3"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  initial={{ pathLength: 0, opacity: 0.9 }}
-                  animate={{ pathLength: 1, opacity: 0 }}
-                  transition={{ duration: 1.3, delay: i * 0.15, ease: "easeOut" }}
+      {kind === "postcards" && (
+        <div className="pointer-events-none absolute inset-x-0 top-[16%] z-10 flex h-0 justify-center" aria-hidden>
+          {!reduced && (
+            <svg viewBox="0 0 400 120" className="absolute -top-14 h-28 w-[min(90vw,40rem)]" fill="none">
+              {["M10 40 Q120 10 230 40 T390 30", "M30 75 Q150 50 260 78 T395 70", "M60 100 Q170 85 280 104"].map(
+                (d, i) => (
+                  <motion.path
+                    key={d}
+                    d={d}
+                    stroke="#fdfaf3"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    initial={{ pathLength: 0, opacity: 0.9 }}
+                    animate={{ pathLength: 1, opacity: 0 }}
+                    transition={{ duration: 1.3, delay: i * 0.15, ease: "easeOut" }}
+                  />
+                ),
+              )}
+            </svg>
+          )}
+          {flights.map(([vx, vy, spin], i) => {
+            const fan = { x: (i - 2) * 52, y: Math.abs(i - 2) * 8, rotate: (i - 2) * 9 };
+            return (
+              <motion.div
+                key={i}
+                className="absolute h-11 w-16 rounded-sm border border-ink/10 bg-[#fbf5e6] shadow-lg"
+                initial={reduced ? fan : { x: 0, y: 0, rotate: 0, opacity: 1, scale: 0.6 }}
+                animate={
+                  reduced
+                    ? fan
+                    : {
+                        x: [0, vx * 3, (vx / 100) * width],
+                        y: [0, vy * 3 - 30, (vy / 100) * height],
+                        rotate: [0, spin / 3, spin],
+                        scale: [0.6, 1.1, 1],
+                        opacity: [1, 1, 0],
+                      }
+                }
+                transition={{ duration: 1.7, delay: 0.3 + i * 0.09, ease: "easeOut" }}
+              >
+                <span
+                  className="absolute top-1 right-1 h-3 w-2.5 rounded-[1px]"
+                  style={{ background: stamps[i % stamps.length] }}
                 />
-              ),
-            )}
-          </svg>
-        )}
-        {flights.map(([vx, vy, spin], i) => {
-          const fan = { x: (i - 2) * 52, y: Math.abs(i - 2) * 8, rotate: (i - 2) * 9 };
-          return (
-            <motion.div
-              key={i}
-              className="absolute h-11 w-16 rounded-sm border border-ink/10 bg-[#fbf5e6] shadow-lg"
-              initial={reduced ? fan : { x: 0, y: 0, rotate: 0, opacity: 1, scale: 0.6 }}
-              animate={
-                reduced
-                  ? fan
-                  : {
-                      x: [0, vx * 3, (vx / 100) * width],
-                      y: [0, vy * 3 - 30, (vy / 100) * height],
-                      rotate: [0, spin / 3, spin],
-                      scale: [0.6, 1.1, 1],
-                      opacity: [1, 1, 0],
-                    }
-              }
-              transition={{ duration: 1.7, delay: 0.3 + i * 0.09, ease: "easeOut" }}
-            >
-              <span
-                className="absolute top-1 right-1 h-3 w-2.5 rounded-[1px]"
-                style={{ background: stamps[i % stamps.length] }}
-              />
-              <span className="absolute top-2 left-1.5 h-px w-6 bg-ink/30" />
-              <span className="absolute top-4 left-1.5 h-px w-8 bg-ink/30" />
-              <span className="absolute top-6 left-1.5 h-px w-5 bg-ink/30" />
-            </motion.div>
-          );
-        })}
-      </div>
+                <span className="absolute top-2 left-1.5 h-px w-6 bg-ink/30" />
+                <span className="absolute top-4 left-1.5 h-px w-8 bg-ink/30" />
+                <span className="absolute top-6 left-1.5 h-px w-5 bg-ink/30" />
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -1098,6 +1228,45 @@ function PostcardsReward() {
         </Link>
       </p>
     </div>
+  );
+}
+
+/** The pancit errand's ending: what Mark makes of his soup, and a little about where it comes from. */
+function PancitReward({ hot }: { hot: boolean }) {
+  return (
+    <div className="mt-4 flex items-center gap-4 rounded-xl bg-paper-deep p-3">
+      <span className="inline-flex size-16 shrink-0 items-center justify-center rounded-full bg-card text-[#e0612f] shadow-md">
+        <BowlIcon className="size-9" />
+      </span>
+      <p className="text-base leading-snug text-ink-soft">
+        {hot
+          ? "\u201cPerfect, still steaming!\u201d Mark puts down his brush to eat."
+          : "\u201cNext time, run!\u201d Mark laughs, and eats it anyway."}{" "}
+        Pancit molo, pork dumplings in a clear garlicky broth, is named after this district.{" "}
+        <Link href={pages.iloilo.path} className="font-semibold text-rose-ink underline">
+          More about Iloilo
+        </Link>
+      </p>
+    </div>
+  );
+}
+
+/** A bowl of soup with steam rising off it. */
+function BowlIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M3 12h18a9 9 0 0 1-18 0Z" />
+      <path d="M8 8c-1-1.3 1-2.2 0-3.6M12 8c-1-1.3 1-2.2 0-3.6M16 8c-1-1.3 1-2.2 0-3.6" />
+    </svg>
   );
 }
 

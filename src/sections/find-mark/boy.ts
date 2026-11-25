@@ -5,7 +5,16 @@
 // legs), he leans into a run, tucks up when he jumps, and when he stands still he breathes, shifts his
 // weight, blinks and looks about. Facing +z, feet at y = 0, about 1.75 m tall in the hat.
 
-import { BufferGeometry, CylinderGeometry, Group, Mesh, SphereGeometry, TorusGeometry, type Material } from "three";
+import {
+  BufferGeometry,
+  CylinderGeometry,
+  Group,
+  Mesh,
+  SphereGeometry,
+  TorusGeometry,
+  type Material,
+  type Object3D,
+} from "three";
 import { Kit } from "./kit";
 
 const SKIN = "#dca37a"; // a warm, light tan
@@ -46,6 +55,9 @@ export class Boy {
   private air = 0;
   private blink = 2;
   private look = { now: 0, want: 0, wait: 2 };
+  /** something held in both hands in front of him (a bowl of pancit), and how far his arms are up for it */
+  private carrying: Object3D | null = null;
+  private hold = 0;
 
   constructor(material: Material) {
     const mesh = (k: Kit, parent: Group) => {
@@ -264,6 +276,7 @@ export class Boy {
     this.phase += dt * (speed > 0.15 ? 3.2 + speed * 1.7 : 0);
     const p = this.phase;
     const reach = (0.5 + r * 0.35) * a;
+    this.hold = ease(this.hold, this.carrying ? 1 : 0, 8);
 
     for (const i of [0, 1]) {
       const q = p + (i === 0 ? 0 : Math.PI); // the legs half a step apart
@@ -297,6 +310,11 @@ export class Boy {
       sx = sx * (1 - this.air) + this.air * -2.4;
       el = el * (1 - this.air) + this.air * -0.4;
       sz = sz * (1 - this.air) + this.air * side * 0.5;
+      // carrying: both forearms out in front, hands in round the bowl, barely swinging
+      const h = this.hold;
+      sx = sx * (1 - h) + h * (-0.55 + swing * 0.04 * a);
+      el = el * (1 - h) + h * -1.0;
+      sz = sz * (1 - h) + h * side * -0.2;
       this.shoulder[i].rotation.set(sx, 0, sz);
       this.elbow[i].rotation.x = el;
     }
@@ -329,6 +347,16 @@ export class Boy {
     this.blink -= dt;
     if (this.blink <= 0) this.blink = 2.5 + Math.random() * 3.5;
     this.eyes.scale.y = this.blink < 0.12 ? 0.1 : 1;
+  }
+
+  /** Holds something in both hands in front of his chest (null puts it down). */
+  carry(obj: Object3D | null) {
+    if (this.carrying) this.chest.remove(this.carrying);
+    this.carrying = obj;
+    if (obj) {
+      obj.position.set(0, 0.17, 0.42);
+      this.chest.add(obj);
+    }
   }
 
   dispose() {

@@ -17,6 +17,7 @@ import {
 } from "three";
 import { buildWorld } from "./build-world";
 import { LostPostcards } from "./quest";
+import { PancitErrand } from "./errand";
 import type { Circle } from "./collide";
 import { Confetti, Trail, buildClickRing, buildFlag, buildSigns, buildWaters } from "./effects";
 import type { Game } from "./game";
@@ -34,6 +35,7 @@ import { ceilingLocal, insideLocal, PLAN, PRAYER_SEATS } from "./church-interior
 import {
   BALLOON,
   CHURCH,
+  ERRAND_TIME,
   FOUND_RADIUS,
   LOST_POSTCARDS,
   MANSION,
@@ -72,6 +74,9 @@ export class Walk {
   private ring = buildClickRing();
   private confetti: Confetti;
   private lostPostcards: LostPostcards;
+  private errand: PancitErrand;
+  /** the "it's getting cold" warning has been given for this bowl */
+  private coldWarned = false;
   private gridTimer = 0;
   private alive = true;
 
@@ -150,6 +155,14 @@ export class Walk {
     this.confetti = new Confetti(lite ? 120 : 200);
     this.balloon = new BalloonFlight(painted, (x, z) => world.terrain.heightAt(x, z));
     this.lostPostcards = new LostPostcards((x, z) => world.terrain.heightAt(x, z));
+    this.errand = new PancitErrand(
+      painted,
+      (x, z) => world.terrain.heightAt(x, z),
+      world.props.signPlacements.find((s) => s.name === "Kap Ising's Pancit Molo"),
+      world.obstacles,
+    );
+    game.pancit = this.errand.spot;
+    game.pancitStall = this.errand.stall;
 
     this.root.add(
       world.root,
@@ -168,6 +181,7 @@ export class Walk {
     );
     if (this.flag) this.root.add(this.flag.mesh);
     if (!game.preview) this.root.add(this.lostPostcards.group);
+    this.root.add(this.errand.group); // the stall is there all along; the errand only lights it up
     this.root.add(this.balloon.group);
 
     game.attachWorld(world.obstacles);
@@ -403,6 +417,17 @@ export class Walk {
       game.audio.found();
       game.emit({ type: "quest-done" });
     }
+    // back at Mark with the pancit: he takes it, still hot (or not quite)
+    if (playing && game.errand === "carry" && atMark) {
+      game.paused = true;
+      game.route = null;
+      game.target = null;
+      if (game.guiding) game.guide(false);
+      player.carry(null);
+      confetti.burst(MARK.x, MARK.y + 2.2, MARK.z);
+      game.audio.found();
+      game.setErrand("done", game.heat >= 0.35);
+    }
     if (playing && !game.found && atMark) {
       game.found = true;
       game.paused = true;
@@ -432,6 +457,22 @@ export class Walk {
           total: LOST_POSTCARDS.length,
         });
       }
+    }
+
+    // ---- the pancit errand: take the bowl at Kap Ising's; it cools on the way ------------------------
+    // (slower in a covered vehicle, faster in the wind up in the balloon)
+    const cooling = (this.flight ? 2 : this.ride ? 0.5 : 1) / ERRAND_TIME;
+    if (this.errand.update(t, dt, game, playing && !this.ride && !this.flight, cooling)) {
+      game.heat = 1;
+      this.coldWarned = false;
+      if (game.guiding && game.guideTo === "pancit") game.guide(false);
+      player.carry(this.errand.held);
+      game.audio.pickup();
+      game.setErrand("carry");
+    }
+    if (game.errand === "carry" && game.heat < 0.3 && !this.coldWarned) {
+      this.coldWarned = true;
+      game.emit({ type: "notice", text: "The pancit's getting cold — hurry!" });
     }
 
     // ---- the camera -----------------------------------------------------------------------------
@@ -635,6 +676,10 @@ export class Walk {
     if (hud.distance) hud.distance.textContent = `${Math.max(0, Math.round(toMark))} m`;
     if (hud.arrow)
       hud.arrow.style.transform = `rotate(${-angleTo(game.yaw, Math.atan2(MARK.x - game.x, MARK.z - game.z))}rad)`;
+    if (hud.heat) {
+      hud.heat.style.transform = `scaleX(${game.heat})`;
+      hud.heat.style.backgroundColor = game.heat >= 0.35 ? "#e0612f" : "#7d9bb8";
+    }
     const fountains = [world.props.fountain, world.pool];
     game.audio.update(dt, Math.min(...fountains.map((f) => Math.hypot(f.x - game.x, f.z - game.z))));
   }
@@ -660,6 +705,7 @@ export class Walk {
     this.trail.dispose();
     this.confetti.dispose();
     this.lostPostcards.dispose();
+    this.errand.dispose();
     this.signs?.dispose();
     this.ride?.cabin.dispose();
     this.balloon.dispose();

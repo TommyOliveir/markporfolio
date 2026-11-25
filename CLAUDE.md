@@ -149,6 +149,18 @@ A game-like walk through real Molo, Iloilo City, built mostly with plain three.j
   beam. Walking into one adds it to `game.collected`, plays `Ambience.pickup()` and emits `postcard`.
 - Coming back to Mark with all five emits `quest-done` and shows the quest card.
 
+**Pancit molo errand** (`errand.ts`)
+
+- It starts after the lost postcards: "Keep exploring" on the quest card opens Mark's "Gutom na ako!"
+  story. Closing it calls `game.startErrand()`; `game.errand` goes `"off"` → `"fetch"` → `"carry"` →
+  `"done"`, and each step emits an `errand` event.
+- `PancitErrand` builds a counter, pot and cook in front of Kap Ising's sign (`PANCIT` in `world.ts` is the
+  fallback) and lights it with a gold glow and beam while fetching. `game.pancit` is where you pick up,
+  and it's also the `"pancit"` guide target and the minimap marker.
+- Walking up to the counter puts the bowl in the boy's hands (`Boy.carry`). `game.heat` drains over
+  `ERRAND_TIME`: half as fast in a vehicle, twice as fast in the balloon. The top-bar bar is written
+  through `game.hud.heat`. Reaching Mark ends it, hot (≥ 0.35) or cold, and the bowl sits on his table.
+
 **Riding the traffic** (`ride.ts`)
 
 - Any jeepney, tricycle or car that stops for you (stand in its lane) can be boarded: "Sakay!" or E.
