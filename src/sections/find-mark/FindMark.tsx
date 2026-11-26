@@ -19,7 +19,8 @@ import {
 } from "react";
 import { postcardAlt, postcards } from "@/sections/postcards/content";
 import { href, pages, sections } from "@/sections/sections";
-import { Game, type BandState, type ErrandStage, type GuideTo } from "./game";
+import { Game, type BandState, type ErrandStage, type GuideTo, type SongStage } from "./game";
+import type { Song } from "./audio";
 import type { FlyView } from "./balloon";
 import type { RideKind, RideView } from "./ride";
 import Minimap from "./Minimap";
@@ -32,10 +33,14 @@ const hours = shop.hours.replace("- ", "–");
 
 // "quest": you brought all the lost postcards back to Mark after already finding him
 // "pancit": you brought him his bowl of pancit molo (the errand after the postcards)
-type Card = "found" | "quest" | "pancit" | null;
+// "song": you taught the band Dandansoy (after the pancit)
+type Card = "found" | "quest" | "pancit" | "song" | null;
 // Mark's stories, when he asks for a hand: the postcards the wind took, then a bowl of pancit
-type Story = "postcards" | "pancit";
+type Story = "postcards" | "pancit" | "song";
 const TOTAL_POSTCARDS = LOST_POSTCARDS.length;
+// the dev-only test buttons (never in production builds)
+const TEST_BUTTON =
+  "caps min-h-11 rounded-full border-2 border-dashed border-ink/40 bg-card/90 px-3.5 text-[0.62rem] tracking-[0.14em] whitespace-nowrap shadow-md backdrop-blur-md";
 
 // The intro card: a sheet at the bottom on phones, centred on bigger screens, and
 // scrollable when the window is too short for them (the auto margins keep the top reachable).
@@ -54,6 +59,10 @@ export default function FindMark() {
   // After the postcards, the pancit errand's ("Gutom na ako!"), then the bowl's heat in the top bar.
   const [story, setStory] = useState<Story | null>(null);
   const [errand, setErrand] = useState<ErrandStage>("off");
+  // then teaching the band Dandansoy: the stage, how many halves you've heard, and what the band's playing
+  const [song, setSong] = useState<SongStage>("off");
+  const [learned, setLearned] = useState(0);
+  const [bandSong, setBandSong] = useState<Song>("viva");
   const [hot, setHot] = useState(true);
   const [questOn, setQuestOn] = useState(false);
   const storyShown = useRef(false);
@@ -99,7 +108,8 @@ export default function FindMark() {
 
   const openStory = useCallback(
     (kind: Story) => {
-      if (kind === "postcards" ? storyShown.current : game.errand !== "off") return;
+      const done = { postcards: storyShown.current, pancit: game.errand !== "off", song: game.song !== "off" };
+      if (done[kind]) return;
       if (kind === "postcards") storyShown.current = true;
       game.hold();
       setStory(kind);
@@ -109,6 +119,7 @@ export default function FindMark() {
 
   const closeStory = useCallback(() => {
     if (story === "pancit") game.startErrand();
+    else if (story === "song") game.startSong();
     else {
       setQuestOn(true);
       game.startQuest();
@@ -179,6 +190,19 @@ export default function FindMark() {
           setHot(!!e.hot);
           setDetails(false);
           celebrate = window.setTimeout(() => setCard("pancit"), 1200);
+        }
+      }
+      if (e.type === "song") {
+        setSong(e.stage);
+        setLearned(e.learned);
+        if (e.stage === "done") {
+          setBandSong("dandansoy");
+          setDetails(false);
+          // let them strike it up first
+          celebrate = window.setTimeout(() => {
+            game.hold();
+            setCard("song");
+          }, 3500);
         }
       }
       if (e.type === "quest-done") {
@@ -287,6 +311,94 @@ export default function FindMark() {
     stage.current?.focus({ preventScroll: true });
   }
 
+  /** Dev only: straight to the start of the band quest, every earlier quest done (see Game.testSong). */
+  function testSong() {
+    setCard(null);
+    setStory(null);
+    setFoundOnce(true);
+    setQuestOn(true);
+    setGot(TOTAL_POSTCARDS);
+    setErrand("done");
+    setBandSong("viva");
+    game.testSong();
+    setPulse(true);
+    stage.current?.focus({ preventScroll: true });
+  }
+
+  /** Asks the band for a tune (once they know Dandansoy, there's a choice). */
+  function playSong(s: Song) {
+    setBandSong(s);
+    game.askBand(true, s);
+  }
+
+  // what you can ask of the band right now: teach them the song, stop them, or pick a tune
+  const other: Song = bandSong === "viva" ? "dandansoy" : "viva";
+  const tuneName = (s: Song) => (s === "viva" ? "Viva" : "Dandansoy");
+  const bandActions: {
+    key: string;
+    label: string;
+    short: string;
+    icon: string;
+    tone: "gold" | "ink" | "line";
+    act: () => void;
+  }[] =
+    song === "teach"
+      ? [
+          {
+            key: "teach",
+            label: "Teach them Dandansoy",
+            short: "Teach Dandansoy",
+            icon: "♪",
+            tone: "gold",
+            act: () => {
+              setBandSong("dandansoy");
+              game.teachBand();
+            },
+          },
+        ]
+      : marching
+        ? [
+            {
+              key: "stop",
+              label: "Tell them to stop",
+              short: "Stop the band",
+              icon: "■",
+              tone: "ink",
+              act: () => game.askBand(false),
+            },
+            ...(song === "done"
+              ? [
+                  {
+                    key: "switch",
+                    label: `Play ${tuneName(other)}`,
+                    short: tuneName(other),
+                    icon: "♪",
+                    tone: "line" as const,
+                    act: () => playSong(other),
+                  },
+                ]
+              : []),
+          ]
+        : song === "done"
+          ? (["viva", "dandansoy"] as Song[]).map((s, i) => ({
+              key: s,
+              label: `Play ${tuneName(s)}`,
+              short: tuneName(s),
+              icon: "♪",
+              tone: i === 0 ? ("gold" as const) : ("line" as const),
+              act: () => playSong(s),
+            }))
+          : [
+              {
+                key: "play",
+                label: "Play band",
+                short: "Play band",
+                icon: "♪",
+                tone: "gold",
+                act: () => game.askBand(true),
+              },
+            ];
+
   function keepExploring() {
     setCard(null);
     // the first time you leave Mark, he asks you to find the postcards the wind took
@@ -297,6 +409,11 @@ export default function FindMark() {
     // and once you've brought them all back, he's hungry
     if (card === "quest" && game.errand === "off") {
       openStory("pancit");
+      return;
+    }
+    // and once he's eaten, he'd like the band to learn a new tune
+    if (card === "pancit" && game.song === "off") {
+      openStory("song");
       return;
     }
     game.resume();
@@ -448,15 +565,16 @@ export default function FindMark() {
         >
           ←<span className="hidden sm:inline"> Back to the site</span>
         </Link>
-        {/* dev only (stripped from production builds): jump to the pancit errand */}
+        {/* dev only (stripped from production builds): jump to the pancit errand, or the band quest */}
         {process.env.NODE_ENV === "development" && started && (
-          <button
-            type="button"
-            onClick={testPancit}
-            className="caps pointer-events-auto absolute top-24 left-3 min-h-11 rounded-full border-2 border-dashed border-ink/40 bg-card/90 px-3.5 text-[0.62rem] tracking-[0.14em] whitespace-nowrap shadow-md backdrop-blur-md sm:top-[4.75rem] sm:left-5"
-          >
-            Test: pancit
-          </button>
+          <div className="pointer-events-auto absolute top-24 left-3 flex flex-col items-start gap-2 sm:top-[4.75rem] sm:left-5">
+            <button type="button" onClick={testPancit} className={TEST_BUTTON}>
+              Test: pancit
+            </button>
+            <button type="button" onClick={testSong} className={TEST_BUTTON}>
+              Test: band
+            </button>
+          </div>
         )}
 
         <AnimatePresence>
@@ -520,7 +638,32 @@ export default function FindMark() {
                   <span className="hidden sm:inline">Pancit from Kap Ising&apos;s</span>
                 </motion.span>
               )}
-              {questOn && (errand === "off" || errand === "done") && (
+              {/* teaching the band Dandansoy: the halves you've heard, then off to the band */}
+              {(song === "learn" || song === "teach") && (
+                <motion.span
+                  key={pulse ? "pulse" : "still"}
+                  animate={pulse && !reduced ? { scale: [1, 1.22, 1, 1.14, 1] } : undefined}
+                  transition={{ duration: 1.5, ease: "easeInOut" }}
+                  className="caps inline-flex items-center gap-1.5 rounded-full bg-gold px-2.5 py-1 text-[0.58rem] tracking-[0.12em] whitespace-nowrap text-ink"
+                  aria-label={
+                    song === "learn" ? `Dandansoy: ${learned} of 2 halves learned` : "Teach the band Dandansoy"
+                  }
+                >
+                  <span aria-hidden>♪</span>
+                  {song === "learn" ? (
+                    <>
+                      <span className="sm:hidden">Dandansoy {learned}/2</span>
+                      <span className="hidden sm:inline">Dandansoy · {learned}/2 halves</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="sm:hidden">Teach the band</span>
+                      <span className="hidden sm:inline">Teach the band Dandansoy</span>
+                    </>
+                  )}
+                </motion.span>
+              )}
+              {questOn && song === "off" && (errand === "off" || errand === "done") && (
                 <motion.span
                   key={pulse ? "pulse" : "still"}
                   animate={pulse && !reduced ? { scale: [1, 1.22, 1, 1.14, 1] } : undefined}
@@ -577,27 +720,38 @@ export default function FindMark() {
           {/* phones: just a one-line chip, so the band stays in view (the full card is for bigger screens) */}
           {showBand && phone && (
             <motion.div
-              key={`band-chip-${marching}`}
+              key={`band-chip-${marching}-${song}`}
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              className="mx-auto w-fit"
+              className="mx-auto flex w-fit max-w-full flex-wrap justify-center gap-2"
             >
-              <motion.button
-                type="button"
-                onClick={() => game.askBand(!marching)}
-                onPointerDown={(e) => e.stopPropagation()}
-                // a gentle pulse in time with the music while they're marching
-                animate={marching && !reduced ? { scale: [1, 1.05, 1] } : { scale: 1 }}
-                transition={marching && !reduced ? { duration: 0.5, repeat: Infinity, ease: "easeInOut" } : {}}
-                aria-label={marching ? "Tell the band to stop" : "Ask the band to play"}
-                className={`pointer-events-auto flex h-11 items-center gap-2 rounded-full px-5 text-[0.7rem] tracking-[0.14em] uppercase shadow-lg ${marching ? "bg-ink text-paper" : "bg-gold text-ink"}`}
-              >
-                <span aria-hidden>{marching ? "■" : "♪"}</span>
-                {marching ? "Stop the band" : "Play band"}
-                {marching && muted && <span className="normal-case tracking-normal opacity-75">(sound off)</span>}
-              </motion.button>
+              {bandActions.map((a) => (
+                <motion.button
+                  key={a.key}
+                  type="button"
+                  onClick={a.act}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  // a gentle pulse in time with the music while they're marching
+                  animate={a.key === "stop" && !reduced ? { scale: [1, 1.05, 1] } : { scale: 1 }}
+                  transition={
+                    a.key === "stop" && !reduced ? { duration: 0.5, repeat: Infinity, ease: "easeInOut" } : {}
+                  }
+                  aria-label={
+                    a.key === "stop" ? "Tell the band to stop" : a.key === "play" ? "Ask the band to play" : a.label
+                  }
+                  className={`pointer-events-auto flex h-11 items-center gap-2 rounded-full px-5 text-[0.7rem] tracking-[0.14em] whitespace-nowrap uppercase shadow-lg ${
+                    a.tone === "ink" ? "bg-ink text-paper" : a.tone === "gold" ? "bg-gold text-ink" : "bg-card text-ink"
+                  }`}
+                >
+                  <span aria-hidden>{a.icon}</span>
+                  {a.short}
+                  {a.key === "stop" && muted && (
+                    <span className="normal-case tracking-normal opacity-75">(sound off)</span>
+                  )}
+                </motion.button>
+              ))}
             </motion.div>
           )}
           {showBand && !phone && (
@@ -615,22 +769,31 @@ export default function FindMark() {
                 The Molo marching band
               </p>
               <p className="mt-1 text-sm leading-snug text-ink-soft sm:mt-1.5 sm:text-base">
-                {marching
-                  ? "Trumpets, trombones, sousaphones and drums, marching up and down in front of St. Anne's."
-                  : "Twenty bandsmen at ease beside St. Anne's. Ask them for a tune and they'll march it down Jocson Street."}
+                {song === "teach"
+                  ? "They only know Viva. You've learned Dandansoy from the sorbetes man and the guard: teach it to them!"
+                  : marching
+                    ? `Trumpets, trombones, sousaphones and drums, marching up and down in front of St. Anne's${song === "done" ? `, playing ${tuneName(bandSong)}` : ""}.`
+                    : song === "done"
+                      ? "Twenty bandsmen at ease beside St. Anne's. They know two tunes now: pick one and they'll march it down Jocson Street."
+                      : "Twenty bandsmen at ease beside St. Anne's. Ask them for a tune and they'll march it down Jocson Street."}
               </p>
               {marching && muted && (
                 <p className="mt-2 text-xs text-rose-ink sm:text-sm">Turn the sound on to hear them.</p>
               )}
-              <button
-                type="button"
-                onClick={() => game.askBand(!marching)}
-                onPointerDown={(e) => e.stopPropagation()}
-                className={`btn ${marching ? "btn-ink" : "btn-gold"} pointer-events-auto mt-3 w-full px-4 text-[0.68rem] tracking-[0.12em] sm:w-auto sm:text-[0.75rem] sm:tracking-[0.18em]`}
-              >
-                <span aria-hidden>{marching ? "■" : "♪"}</span>
-                {marching ? "Tell them to stop" : "Play band"}
-              </button>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {bandActions.map((a) => (
+                  <button
+                    key={a.key}
+                    type="button"
+                    onClick={a.act}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className={`btn ${a.tone === "ink" ? "btn-ink" : a.tone === "gold" ? "btn-gold" : "btn-line bg-card"} pointer-events-auto px-4 text-[0.68rem] tracking-[0.12em] whitespace-nowrap sm:text-[0.75rem] sm:tracking-[0.18em]`}
+                  >
+                    <span aria-hidden>{a.icon}</span>
+                    {a.label}
+                  </button>
+                ))}
+              </div>
             </motion.div>
           )}
           {showLandmark && landmarkView === "mini" && (
@@ -800,7 +963,32 @@ export default function FindMark() {
                 </>
               )}
             </button>
-            {errand === "fetch" ? (
+            {song === "learn" || song === "teach" ? (
+              <button
+                type="button"
+                onClick={() => game.guide(guiding !== "song", "song")}
+                className={`btn ${guiding === "song" ? "btn-ink" : "btn-line bg-card/95 backdrop-blur-sm"} px-3 text-[0.68rem] tracking-[0.12em] whitespace-nowrap shadow-lg max-sm:flex-1 max-sm:gap-2 sm:px-[1.6rem] sm:text-[0.78rem] sm:tracking-[0.2em]`}
+              >
+                <span aria-hidden className="text-base leading-none">
+                  ♪
+                </span>
+                {guiding === "song" ? (
+                  <>
+                    Hide <span className="hidden sm:inline">the</span> trail
+                  </>
+                ) : song === "teach" ? (
+                  <>
+                    <span className="sm:hidden">Band</span>
+                    <span className="hidden sm:inline">Go to the band</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="sm:hidden">Tune</span>
+                    <span className="hidden sm:inline">Find the tune</span>
+                  </>
+                )}
+              </button>
+            ) : errand === "fetch" ? (
               <button
                 type="button"
                 onClick={() => game.guide(guiding !== "pancit", "pancit")}
@@ -967,25 +1155,32 @@ export default function FindMark() {
           >
             <div className="shrink-0 p-4 sm:p-5">
               <p className="caps text-[0.62rem] text-rose-ink">
-                {card === "pancit" ? "Delivered!" : card === "quest" ? "Quest complete!" : "You found him!"}
+                {card === "pancit"
+                  ? "Delivered!"
+                  : card === "quest" || card === "song"
+                    ? "Quest complete!"
+                    : "You found him!"}
               </p>
               <h2
                 id="found-title"
                 className="font-display mt-1 text-2xl leading-tight font-semibold italic sm:text-[2rem]"
               >
-                {card === "pancit"
-                  ? hot
-                    ? "Mainit pa! Still hot"
-                    : "A bit cold \u2014 salamat gihapon!"
-                  : card === "quest"
-                    ? "All his postcards, home"
-                    : "Mark\u2019s at Molo Mansion"}
+                {card === "song"
+                  ? "The band knows Dandansoy!"
+                  : card === "pancit"
+                    ? hot
+                      ? "Mainit pa! Still hot"
+                      : "A bit cold \u2014 salamat gihapon!"
+                    : card === "quest"
+                      ? "All his postcards, home"
+                      : "Mark\u2019s at Molo Mansion"}
               </h2>
               <p className="mt-1 text-sm leading-snug text-ink-soft sm:text-base">
                 Postcards on sale in person, {hours}.
               </p>
               {card === "quest" && <PostcardsReward />}
               {card === "pancit" && <PancitReward hot={hot} />}
+              {card === "song" && <SongReward />}
               <div className="mt-3 flex gap-2 sm:mt-4">
                 <button
                   type="button"
@@ -1076,6 +1271,13 @@ const STORIES: Record<Story, { kicker: string; title: string; line: string; hint
     line: "\u201cAll that painting made me hungry. Could you get me a bowl of pancit molo from Kap Ising\u2019s, south-east of the plaza? Bring it while it\u2019s hot!\u201d",
     hint: "Follow the gold beam. A jeepney keeps it warm; the balloon cools it fast.",
     button: "On my way",
+  },
+  song: {
+    kicker: "Mark needs a hand (one more time)",
+    title: "\u201cTeach them Dandansoy!\u201d",
+    line: "\u201cThe band only knows one tune. Manong sorbetes by the fountain knows the first half of Dandansoy; the guard at my gate knows the rest. Learn it, then teach the band!\u201d",
+    hint: "Look for the gold \u266a over their heads; the map shows them too.",
+    button: "I\u2019ll learn it",
   },
 };
 
@@ -1251,6 +1453,24 @@ function PancitReward({ hot }: { hot: boolean }) {
   );
 }
 
+/** The band quest's ending: the band plays Dandansoy, and you can ask for it any time. */
+function SongReward() {
+  return (
+    <div className="mt-4 flex items-center gap-4 rounded-xl bg-paper-deep p-3">
+      <span
+        className="inline-flex size-16 shrink-0 items-center justify-center rounded-full bg-card text-3xl text-rose-ink shadow-md"
+        aria-hidden
+      >
+        ♪
+      </span>
+      <p className="text-base leading-snug text-ink-soft">
+        Dandansoy, Iloilo&apos;s best-loved folk song, sung by someone heading home to Payaw. Mark hums along from the
+        terrace. Ask the band for it any time.
+      </p>
+    </div>
+  );
+}
+
 /** A bowl of soup with steam rising off it. */
 function BowlIcon({ className }: { className?: string }) {
   return (
@@ -1356,7 +1576,7 @@ function RideBar({
 
 /**
  * While you're up in the balloon: where you're looking from (the basket, or outside), and the two ways
- * down: "Land here" (straight down over the nearest open ground) and "Fly home" (back to the churchyard
+ * down: "Land here" (straight down over the nearest open ground) and "Back" (fly back to the churchyard
  * lawn). A bar across the bottom on phones, bottom right on bigger screens.
  */
 function FlightBar({
@@ -1410,9 +1630,11 @@ function FlightBar({
           <button
             type="button"
             onClick={onHome}
+            aria-label="Fly back to the churchyard"
+            title="Fly back to the churchyard"
             className="btn btn-line min-h-11 flex-1 bg-card px-3 text-[0.68rem] tracking-[0.12em] whitespace-nowrap"
           >
-            Fly home
+            Back
           </button>
         </div>
       </div>

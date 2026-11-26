@@ -217,3 +217,69 @@ export const churchInside: Landmark = {
 
 /** Google Maps directions to the mansion, for the "found him" card. */
 export const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${shop.geo.latitude},${shop.geo.longitude}`;
+
+/** A tune for the band to play, written out: notes as [MIDI note (null: a rest), beats], looping. */
+export type Tune = {
+  bpm: number;
+  /** beats in a bar (3: oom-pah-pah) */
+  bar: number;
+  /** the melody; its beats add up to whole bars */
+  notes: [number | null, number][];
+  /** the bass's root note (MIDI), one a bar */
+  bass: number[];
+};
+
+// Dandansoy, the Hiligaynon folk song (traditional), in C, 3/4. Written out from memory: listen to it once
+// and fix any wrong notes here. Four lines of four bars, the first two ("Dandansoy, bayaan ta ikaw / Pauli
+// ako sa Payaw") are the half the sorbetes man knows, the last two the half the guard knows.
+const DANDANSOY_FIRST: [number, number][] = [
+  [67, 1],
+  [67, 1],
+  [64, 1],
+  [65, 1],
+  [67, 1],
+  [69, 1],
+  [67, 2],
+  [64, 1],
+  [62, 3],
+  [65, 1],
+  [65, 1],
+  [62, 1],
+  [64, 1],
+  [65, 1],
+  [67, 1],
+  [65, 2],
+  [62, 1],
+  [60, 3],
+];
+const DANDANSOY_SECOND: [number, number][] = [
+  [72, 1],
+  [72, 1],
+  [71, 1],
+  [69, 1],
+  [71, 1],
+  [72, 1],
+  [74, 2],
+  [71, 1],
+  [67, 3],
+  [69, 1],
+  [69, 1],
+  [67, 1],
+  [65, 1],
+  [64, 1],
+  [62, 1],
+  [64, 2],
+  [62, 1],
+  [60, 3],
+];
+export const DANDANSOY = {
+  firstHalf: DANDANSOY_FIRST,
+  secondHalf: DANDANSOY_SECOND,
+  tune: {
+    bpm: 132,
+    bar: 3,
+    notes: [...DANDANSOY_FIRST, ...DANDANSOY_SECOND],
+    // C C G G | G G G C | F F G G | F C G C
+    bass: [36, 36, 43, 43, 43, 43, 43, 36, 41, 41, 43, 43, 41, 36, 43, 36],
+  } satisfies Tune,
+};

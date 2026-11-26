@@ -24,6 +24,7 @@ import { seeded } from "@/lib/seeded";
 import { inside, type Circle, type Obstacles } from "./collide";
 import { time } from "./materials";
 import { areas, benches, points } from "./molo-map";
+import type { Singer } from "./game";
 import { Person, crowdLook } from "./people";
 
 /** Wings that flap: vertices with aWing ≠ 0 lift and fall; each instance has its own phase and flap amount. */
@@ -143,6 +144,10 @@ export class Life {
   private rand = seeded(311);
   private colliders: Circle[] = [];
   private fountain: { x: number; z: number };
+  /** the two who know Dandansoy (the band quest): the sorbetes man and the guard at the mansion gate */
+  readonly singers: Record<Singer, Person>;
+  /** who's singing to you, until when (seconds), and the way they turned from */
+  private singing = new Map<Singer, { until: number; facing: number }>();
 
   constructor(
     material: Material,
@@ -233,6 +238,7 @@ export class Life {
     guard.root.rotation.y = opts.gate.facing;
     this.still.push({ person: guard, mode: "stand", cx: 0, cz: 0, phase: 2 });
     this.obstacles.addCircle(opts.gate.x, opts.gate.z, 0.35, 1.7);
+    this.singers = { sorbetes: vendor, guard };
 
     // folk resting on the benches round the flagpole
     const pole = points.find((p) => p.kind === "flagpole")?.at ?? [0, 0];
@@ -392,7 +398,14 @@ export class Life {
     return this.colliders;
   }
 
-  update(dt: number, t: number, player: { x: number; z: number; speed: number }) {
+  /** One of the singers turns to you and sings (sways and waves along) until `until` seconds. */
+  sing(who: Singer, until: number) {
+    const p = this.singers[who];
+    const was = this.singing.get(who)?.facing ?? p.root.rotation.y;
+    this.singing.set(who, { until, facing: was });
+  }
+
+  update(dt: number, t: number, player: { x: number; z: number; speed: number; reducedMotion?: boolean }) {
     // strollers
     for (const w of this.walkers) {
       const dx = w.tx - w.x;
@@ -441,6 +454,22 @@ export class Life {
         s.person.eat(t, s.phase);
       } else if (s.mode === "stand") {
         s.person.animate(dt, 0, t + s.phase);
+      }
+    }
+    // singing you their half of Dandansoy: facing you, swaying and waving along, then back as they were
+    for (const [who, s] of this.singing) {
+      const p = this.singers[who];
+      const sing = t < s.until;
+      const want = sing ? Math.atan2(player.x - p.root.position.x, player.z - p.root.position.z) : s.facing;
+      const d = Math.atan2(Math.sin(want - p.root.rotation.y), Math.cos(want - p.root.rotation.y));
+      p.root.rotation.y += d * Math.min(dt * 5, 1);
+      if (sing && !player.reducedMotion) {
+        p.wave(t * 0.5);
+        p.body.rotation.z = Math.sin(t * 3.4) * 0.06;
+      } else {
+        p.rest();
+        p.body.rotation.z = 0;
+        if (!sing && Math.abs(d) < 0.01) this.singing.delete(who);
       }
     }
     this.balloons.children.forEach((b, i) => {

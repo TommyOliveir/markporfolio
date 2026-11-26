@@ -7,7 +7,7 @@
 //
 // The flight: lift off straight up past the church's spires, then drift slowly round Molo (BALLOON_PATH)
 // and come back down on the lawn. "Land here" stops it and brings it straight down over the nearest open
-// ground (you step out there, and the empty balloon floats back home on its own); "Fly home" turns it
+// ground (you step out there, and the empty balloon floats back home on its own); "Back" turns it
 // back to the lawn.
 
 import {
@@ -227,7 +227,7 @@ export class BalloonFlight {
     this.travelTo(this.landing);
   }
 
-  /** "Fly home": back over the lawn by the church, and down. */
+  /** "Back": back over the lawn by the church, and down. */
   flyHome() {
     if (!this.carrying || this.phase === "descending") return;
     this.landing.copy(this.home);

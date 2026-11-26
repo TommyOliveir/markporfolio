@@ -148,6 +148,39 @@ export default function Minimap({ game }: { game: Game }) {
         ctx.restore();
       }
 
+      // the band quest: a ♪ over whoever's next (the singers, then the band), pulsing big for a few
+      // seconds after Mark asks
+      if (game.song === "learn" || game.song === "teach") {
+        const since = (now - game.songHint) / 1000;
+        const grow = since < 4 ? 1.9 + Math.sin(since * 9) * 0.35 : 1;
+        for (const m of game.songMarks) {
+          ctx.save();
+          ctx.translate(m.x, m.z);
+          ctx.rotate(-(game.yaw - Math.PI));
+          ctx.scale(grow, grow);
+          ctx.beginPath();
+          ctx.arc(0, 0, 4.4, 0, Math.PI * 2);
+          ctx.fillStyle = "#fdfaf3";
+          ctx.fill();
+          ctx.strokeStyle = "#e6ab2e";
+          ctx.lineWidth = 1.4;
+          ctx.stroke();
+          // the note: a head, a stem and a flag
+          ctx.fillStyle = "#c8961f";
+          ctx.beginPath();
+          ctx.ellipse(-0.9, 1.6, 1.4, 1.05, -0.4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillRect(0.25, -2.8, 0.8, 4.4);
+          ctx.beginPath();
+          ctx.moveTo(1.05, -2.8);
+          ctx.quadraticCurveTo(2.6, -1.8, 2.2, -0.4);
+          ctx.strokeStyle = "#c8961f";
+          ctx.lineWidth = 0.9;
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
       // the hot-air balloon: at its lawn, or wherever it is up in the sky
       ctx.save();
       ctx.translate(game.flying ? game.x : BALLOON.x, game.flying ? game.z : BALLOON.z);

@@ -109,6 +109,12 @@ export class Band {
     this.place(0);
   }
 
+  /** Where the drum major is (for the band quest's ♪ marker and the trail to the band). */
+  get leader() {
+    const m = this.members[0];
+    return { x: m.x, z: m.z };
+  }
+
   /** The bandsmen as circles you bump into. */
   colliders() {
     this.colliderList.length = 0;
@@ -134,8 +140,11 @@ export class Band {
   update(dt: number, t: number, game: Game) {
     const request = game.bandRequest;
     game.bandRequest = null;
+    // already out and playing, asked for the other tune: they just change songs
+    if (request === "play" && (this.state === "gathering" || this.state === "parade"))
+      game.audio.playBand(game.bandSong);
     if (request === "play" && (this.state === "rest" || this.state === "returning")) {
-      game.audio.playBand();
+      game.audio.playBand(game.bandSong);
       if (this.state === "rest") {
         // strike up where they stand; they step off once the street is clear of cars
         this.state = "gathering";

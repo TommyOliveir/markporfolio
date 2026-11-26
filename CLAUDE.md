@@ -113,7 +113,7 @@ A game-like walk through real Molo, Iloilo City, built mostly with plain three.j
 **Runtime**
 
 - `game.ts` (`Game`) holds the shared state between the React page and the scene: position, controls,
-  route and guiding (`guide(on, "mark" | "supermart")`), plus events sent through `emit`.
+  route and guiding (`guide(on, to)`: Mark, the supermarket, the pancit stall, or the band quest's next stop), plus events sent through `emit`.
 - `walk.ts` (`Walk.frame`) runs every frame: movement, camera, landmarks, trail, and updates to uniforms
   such as `time` and `seeThrough` from `materials.ts`.
 - `FindMark.tsx` is the HUD: cards, buttons, joystick and minimap. It listens to `Game` events.
@@ -161,6 +161,21 @@ A game-like walk through real Molo, Iloilo City, built mostly with plain three.j
   `ERRAND_TIME`: half as fast in a vehicle, twice as fast in the balloon. The top-bar bar is written
   through `game.hud.heat`. Reaching Mark ends it, hot (≥ 0.35) or cold, and the bowl sits on his table.
 
+**Teaching the band Dandansoy** (`song.ts`)
+
+- It starts after the pancit: "Keep exploring" on the delivered card opens Mark's "Teach them Dandansoy!"
+  story, and closing it calls `game.startSong()`. `game.song` goes `"off"` → `"learn"` → `"teach"` →
+  `"done"`, emitting `song` events.
+- A gold ♪ floats over the sorbetes man and the mansion gate guard (`Life.singers`). Walking within 4.5 m
+  of one of them plays their half of `DANDANSOY` (`world.ts`) through `Ambience.phrase`, as a whistle or a
+  hum, and `Life.sing` turns them to you, waving. The `"song"` guide target is `game.songTarget`.
+- With both halves, the ♪ moves to the drum major (`Band.leader`). The band card's "Teach them Dandansoy"
+  calls `game.teachBand()`. After that the band card offers Viva or Dandansoy (`game.bandSong`).
+- Dandansoy is synthesised (`Ambience.startTune`: brass `lead`, tuba, drums), not a recording. It was
+  written out from memory, so fix any wrong notes in the `DANDANSOY` note lists.
+- Dev builds have "Test: pancit" and "Test: band" buttons (under `NODE_ENV === "development"`), which skip
+  ahead to those quests.
+
 **Riding the traffic** (`ride.ts`)
 
 - Any jeepney, tricycle or car that stops for you (stand in its lane) can be boarded: "Sakay!" or E.
@@ -178,7 +193,7 @@ A game-like walk through real Molo, Iloilo City, built mostly with plain three.j
 - `BalloonFlight` rises, drifts the `BALLOON_PATH` loop, and comes down on its lawn.
   - "Land here" (or E in the air) comes straight down over the nearest open ground, found with
     `WalkGrid.openGround`. You step out there and the empty balloon floats home.
-  - "Fly home" goes back to the lawn.
+  - "Back" flies back to the lawn.
 - `balloonCamera` gives the basket and outside views. `Walk` eases the fog back while you're up.
 
 **Shop signs** come from `signs` in `molo-map.ts`. Each is hung on its building's street-facing wall.

@@ -2,6 +2,8 @@
 // the town, birdsong, the fountain splashing louder as you get near, footsteps, a jeepney's horn,
 // and a little tune when you find Mark.
 
+import { DANDANSOY, type Tune } from "./world";
+
 /** A recording of St. Anne's bell, if one has been added to public/ (otherwise the bell is synthesised). */
 const BELL_FILE = "/church-bell.mp3";
 /** Seconds between strokes in that recording (they land at about 0.1, 6.05, 11.9 and 18.6 s). */
@@ -14,6 +16,11 @@ const BAND_START = 2.15;
 const BAND_END = 114.25;
 /** Seconds between strokes of the synthesised bell. */
 const BELL_SYNTH_GAP = 2.4;
+
+/** What the band can play: the recording, or (once you've taught them) Dandansoy, synthesised here. */
+export type Song = "viva" | "dandansoy";
+
+const hz = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
 
 export class Ambience {
   private ctx: AudioContext | null = null;
@@ -31,6 +38,7 @@ export class Ambience {
   private band: HTMLAudioElement | null = null;
   private bandOn = false;
   private bandLevel = 0;
+  private bandTune: Song = "viva";
   private bandSynth: { out: GainNode; timer: number; next: number; beat: number } | null = null;
   /** wakes the sound back up after the phone paused it (see `start`) */
   private wake: (() => void) | null = null;
@@ -497,9 +505,15 @@ export class Ambience {
    * The marching band strikes up (looping until `stopBand`). How loud it is follows `bandDistance`,
    * so it swells as you walk up to them.
    */
-  playBand() {
-    if (this.bandOn || typeof Audio === "undefined") return;
+  playBand(song: Song = "viva") {
+    if (typeof Audio === "undefined" || (this.bandOn && this.bandTune === song)) return;
+    if (this.bandOn) this.cutBand(); // asked for the other tune: stop this one and strike that up
     this.bandOn = true;
+    this.bandTune = song;
+    if (song === "dandansoy") {
+      this.startTune(DANDANSOY.tune);
+      return;
+    }
     const band = this.bandAudio();
     band.muted = this.muted;
     band.volume = 0;
@@ -528,6 +542,129 @@ export class Ambience {
     band.load();
     this.band = band;
     return band;
+  }
+
+  /** Stops whatever the band is playing straight away (a quick fade), to change tunes. */
+  private cutBand() {
+    this.band?.pause();
+    const synth = this.bandSynth;
+    if (synth && this.ctx) {
+      window.clearInterval(synth.timer);
+      synth.out.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+      window.setTimeout(() => synth.out.disconnect(), 400);
+      this.bandSynth = null;
+    }
+  }
+
+  /**
+   * A written-out tune (see `Tune` in world.ts), looping: the melody on brass, a tuba oom-pah-pah (the
+   * root on the downbeat, the fifth after), the bass drum on one and the snares on the other beats, and
+   * a roll into the top of the tune each time round.
+   */
+  private startTune(tune: Tune) {
+    const ctx = this.ctx;
+    if (!ctx || !this.master || this.bandSynth) return;
+    const out = ctx.createGain();
+    out.gain.value = 0;
+    out.connect(this.master);
+    const beat = 60 / tune.bpm;
+    const starts: number[] = [];
+    let total = 0;
+    for (const [, len] of tune.notes) {
+      starts.push(total);
+      total += len;
+    }
+    const synth = { out, timer: 0, next: ctx.currentTime + 0.1, beat: 0 };
+    const schedule = () => {
+      while (synth.next < ctx.currentTime + 0.3) {
+        const t = synth.next;
+        const pos = synth.beat % total;
+        const inBar = pos % tune.bar;
+        if (inBar === 0) this.boom(out, t, 0.8);
+        else this.snare(out, t, 0.4);
+        if (pos >= total - 1) for (let r = 1; r < 4; r++) this.snare(out, t + (beat / 4) * r, 0.3);
+        const root = hz(tune.bass[Math.floor(pos / tune.bar) % tune.bass.length]);
+        this.tuba(out, t, inBar === 0 ? root : root * 1.5, beat * 0.6);
+        tune.notes.forEach(([note, len], k) => {
+          if (note !== null && starts[k] >= pos && starts[k] < pos + 1)
+            this.lead(out, t + (starts[k] - pos) * beat, hz(note), len * beat * 0.92);
+        });
+        synth.next += beat;
+        synth.beat++;
+      }
+    };
+    schedule();
+    synth.timer = window.setInterval(schedule, 100);
+    this.bandSynth = synth;
+  }
+
+  /** A brass note for the melody: two slightly detuned saws through a soft filter, with a quick attack. */
+  private lead(out: AudioNode, at: number, f: number, length: number) {
+    const ctx = this.ctx!;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.setValueAtTime(900, at);
+    lp.frequency.linearRampToValueAtTime(2200, at + 0.05); // the bright "blat" as the note speaks
+    lp.frequency.linearRampToValueAtTime(1500, at + 0.2);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(0.16, at + 0.03);
+    g.gain.setValueAtTime(0.14, at + Math.max(0.05, length - 0.08));
+    g.gain.exponentialRampToValueAtTime(0.0001, at + length);
+    lp.connect(g).connect(out);
+    for (const detune of [-6, 6]) {
+      const o = ctx.createOscillator();
+      o.type = "sawtooth";
+      o.frequency.value = f;
+      o.detune.value = detune;
+      o.connect(lp);
+      o.start(at);
+      o.stop(at + length + 0.05);
+    }
+  }
+
+  /**
+   * Someone in the plaza sings you their half of a tune: the sorbetes man whistles it (a high, wavering
+   * sine), the guard hums it (a soft, low triangle). Returns how long it lasts, in seconds.
+   */
+  phrase(notes: [number, number][], voice: "whistle" | "hum", bpm = 120) {
+    const ctx = this.ctx;
+    const beat = 60 / bpm;
+    const length = notes.reduce((n, [, len]) => n + len, 0) * beat;
+    if (!ctx || !this.master) return length;
+    let at = ctx.currentTime + 0.15;
+    for (const [note, len] of notes) {
+      const d = len * beat;
+      const o = ctx.createOscillator();
+      o.type = voice === "whistle" ? "sine" : "triangle";
+      o.frequency.value = hz(note) * (voice === "whistle" ? 2 : 0.5);
+      const g = ctx.createGain();
+      const level = voice === "whistle" ? 0.12 : 0.22;
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(level, at + 0.04);
+      g.gain.setValueAtTime(level * 0.85, at + d * 0.8);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + d * 0.98);
+      if (voice === "whistle") {
+        // a little vibrato
+        const lfo = ctx.createOscillator();
+        lfo.frequency.value = 5.5;
+        const depth = ctx.createGain();
+        depth.gain.value = 9;
+        lfo.connect(depth).connect(o.frequency);
+        lfo.start(at);
+        lfo.stop(at + d);
+        o.connect(g).connect(this.master);
+      } else {
+        const lp = ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.frequency.value = 900;
+        o.connect(lp).connect(g).connect(this.master);
+      }
+      o.start(at);
+      o.stop(at + d);
+      at += d;
+    }
+    return length;
   }
 
   /** The band stops playing (fading out over a second). */

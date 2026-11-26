@@ -18,6 +18,7 @@ import {
 import { buildWorld } from "./build-world";
 import { LostPostcards } from "./quest";
 import { PancitErrand } from "./errand";
+import { SongQuest } from "./song";
 import type { Circle } from "./collide";
 import { Confetti, Trail, buildClickRing, buildFlag, buildSigns, buildWaters } from "./effects";
 import type { Game } from "./game";
@@ -35,6 +36,7 @@ import { ceilingLocal, insideLocal, PLAN, PRAYER_SEATS } from "./church-interior
 import {
   BALLOON,
   CHURCH,
+  DANDANSOY,
   ERRAND_TIME,
   FOUND_RADIUS,
   LOST_POSTCARDS,
@@ -75,6 +77,7 @@ export class Walk {
   private confetti: Confetti;
   private lostPostcards: LostPostcards;
   private errand: PancitErrand;
+  private songQuest = new SongQuest();
   /** the "it's getting cold" warning has been given for this bowl */
   private coldWarned = false;
   private gridTimer = 0;
@@ -182,6 +185,7 @@ export class Walk {
     if (this.flag) this.root.add(this.flag.mesh);
     if (!game.preview) this.root.add(this.lostPostcards.group);
     this.root.add(this.errand.group); // the stall is there all along; the errand only lights it up
+    if (!game.preview) this.root.add(this.songQuest.group);
     this.root.add(this.balloon.group);
 
     game.attachWorld(world.obstacles);
@@ -260,7 +264,7 @@ export class Walk {
       game.emit({ type: "can-board", near: !!hop, kind: hopKind });
     }
 
-    // ---- the hot-air balloon: climb in, "Land here" (over the nearest open ground), "Fly home" -----
+    // ---- the hot-air balloon: climb in, "Land here" (over the nearest open ground), "Back" ----------
     const balloon = this.balloon;
     if (game.balloonRequest === "board" && playing && !this.flight && !this.ride && balloon.emptyAtHome) this.takeOff();
     if (game.balloonRequest === "land" && this.flight) {
@@ -617,6 +621,27 @@ export class Walk {
     }
     life.update(dt, t, game);
     this.band.update(dt, t, game);
+
+    // the band quest: walk up to the sorbetes man or the guard and they sing you their half of Dandansoy
+    const heard = game.preview
+      ? null
+      : this.songQuest.update(t, game, life, this.band.leader, playing && !this.ride && !this.flight);
+    if (heard) {
+      game.learned.add(heard);
+      const half = heard === "sorbetes" ? DANDANSOY.firstHalf : DANDANSOY.secondHalf;
+      const seconds = game.audio.phrase(half, heard === "sorbetes" ? "whistle" : "hum");
+      life.sing(heard, t + seconds + 0.3);
+      const n = game.learned.size;
+      game.emit({
+        type: "notice",
+        text:
+          n === 2
+            ? `${heard === "sorbetes" ? "Manong sorbetes whistles" : "The guard hums"} the rest. You know Dandansoy! Now teach the band by St. Anne\u2019s.`
+            : `${heard === "sorbetes" ? "Manong sorbetes whistles the first half" : "The guard hums the second half"} (1/2)`,
+      });
+      if (game.guiding && game.guideTo === "song") game.guide(false);
+      game.setSong(n === 2 ? "teach" : "learn");
+    }
     confetti.update(dt);
 
     // the trail to Mark, re-planned as you go
@@ -706,6 +731,7 @@ export class Walk {
     this.confetti.dispose();
     this.lostPostcards.dispose();
     this.errand.dispose();
+    this.songQuest.dispose();
     this.signs?.dispose();
     this.ride?.cabin.dispose();
     this.balloon.dispose();

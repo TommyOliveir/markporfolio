@@ -3,20 +3,34 @@
 // news for the page (you reached a landmark, you found Mark).
 
 import { Ambience } from "./audio";
+import type { Song } from "./audio";
 import type { FlyView } from "./balloon";
 import type { RideKind, RideView } from "./ride";
 import type { Obstacles, WalkGrid } from "./collide";
 import { LOST_POSTCARDS, MARK, PANCIT, START, SUPERMART, type Landmark } from "./world";
 
-/** Where "show me the way" can lead: to Mark, to Iloilo Supermart, or to the pancit stall (the errand). */
-export type GuideTo = "mark" | "supermart" | "pancit";
-const DESTINATIONS: Record<Exclude<GuideTo, "pancit">, { x: number; z: number }> = { mark: MARK, supermart: SUPERMART };
+/**
+ * Where "show me the way" can lead: to Mark, to Iloilo Supermart, to the pancit stall (the errand), or
+ * to whoever's next in the band quest.
+ */
+export type GuideTo = "mark" | "supermart" | "pancit" | "song";
+const DESTINATIONS: Record<Exclude<GuideTo, "pancit" | "song">, { x: number; z: number }> = {
+  mark: MARK,
+  supermart: SUPERMART,
+};
 
 /**
  * The pancit errand, after the lost postcards: off until Mark asks, then fetching a bowl from Kap
  * Ising's, carrying it back to him while it's hot, and done once he has it.
  */
 export type ErrandStage = "off" | "fetch" | "carry" | "done";
+
+/**
+ * Teaching the band Dandansoy, after the pancit: off until Mark asks, then learning its two halves (from
+ * the sorbetes man and the guard), then teaching the band, and done once they've played it.
+ */
+export type SongStage = "off" | "learn" | "teach" | "done";
+export type Singer = "sorbetes" | "guard";
 
 /**
  * The marching band by the convent: standing at ease beside the church, filing out to the street once
@@ -38,6 +52,8 @@ export type GameEvent =
   | { type: "postcard"; id: string; where: string; got: number; total: number }
   /** you brought all the lost postcards back to Mark (after already finding him) */
   | { type: "quest-done" }
+  /** the band quest moved on, or you learned a half of the song */
+  | { type: "song"; stage: SongStage; learned: number }
   /** the pancit errand moved on (at "done": whether the soup was still hot) */
   | { type: "errand"; stage: ErrandStage; hot?: boolean }
   /** you got on a jeepney (view: where you're looking from), changed seat, or got off (null) */
@@ -110,6 +126,16 @@ export class Game {
   errandHint = 0;
   /** where you pick up the bowl (the walk moves it in front of the stall once it's built) */
   pancit = { x: PANCIT.x, z: PANCIT.z };
+  /** the band quest, who you've learned the song from, and when Mark asked */
+  song: SongStage = "off";
+  readonly learned = new Set<Singer>();
+  songHint = 0;
+  /** who's next in the band quest (the walk keeps it up to date): the trail and the minimap lead there */
+  songTarget = { x: 0, z: 0 };
+  /** where the ♪ markers are, for the minimap */
+  readonly songMarks: { x: number; z: number }[] = [];
+  /** what the band plays when you ask */
+  bandSong: Song = "viva";
   /** the middle of the stall's counter */
   pancitStall = { x: PANCIT.x, z: PANCIT.z };
   /** the controls are off while a card is up (the "found him" card) */
@@ -170,7 +196,7 @@ export class Game {
   /** close enough to the balloon to climb in */
   nearBalloon = false;
 
-  /** "Ride the balloon", "Land here" or "Fly home". */
+  /** "Ride the balloon", "Land here" or "Back" (fly home). */
   requestBalloon(what: "board" | "land" | "home") {
     if (what === "board" ? this.nearBalloon && !this.flying && !this.riding : !!this.flying) this.balloonRequest = what;
   }
@@ -254,6 +280,40 @@ export class Game {
     } else this.resume();
   }
 
+  /** Mark wants the band to learn Dandansoy: the two who know it light up, and you walk on. */
+  startSong() {
+    if (this.song !== "off") return;
+    this.setSong("learn");
+    this.songHint = performance.now();
+    this.resume();
+  }
+
+  setSong(stage: SongStage) {
+    this.song = stage;
+    this.emit({ type: "song", stage, learned: this.learned.size });
+  }
+
+  /** "Teach them Dandansoy", at the band: they learn it, strike it up and march it out. */
+  teachBand() {
+    if (this.song !== "teach") return;
+    this.askBand(true, "dandansoy");
+    this.setSong("done");
+  }
+
+  /** Dev only (the "Test: band" button): skips to the start of the band quest, all the earlier quests done. */
+  testSong() {
+    this.found = true;
+    this.questStarted = true;
+    this.questDone = true;
+    LOST_POSTCARDS.forEach((p) => this.collected.add(p.id));
+    this.cinematic = null;
+    this.errand = "done"; // (quietly: the page sets its own state, so no "delivered" card)
+    this.learned.clear();
+    this.bandSong = "viva";
+    this.song = "off";
+    this.startSong();
+  }
+
   setErrand(stage: ErrandStage, hot?: boolean) {
     this.errand = stage;
     this.emit({ type: "errand", stage, hot });
@@ -313,11 +373,14 @@ export class Game {
 
   /** where the trail leads while guiding */
   get destination() {
-    return this.guideTo === "pancit" ? this.pancit : DESTINATIONS[this.guideTo];
+    if (this.guideTo === "pancit") return this.pancit;
+    if (this.guideTo === "song") return this.songTarget;
+    return DESTINATIONS[this.guideTo];
   }
 
   /** Asks the band to strike up and march (or to stop and go back). */
-  askBand(play: boolean) {
+  askBand(play: boolean, song?: Song) {
+    if (song) this.bandSong = song;
     this.bandRequest = play ? "play" : "stop";
   }
 
