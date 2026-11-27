@@ -106,6 +106,8 @@ export function buildCabin(kind: RideKind, colors: [string, string], material: M
 
   return {
     group,
+    /** the driver and passengers (the walk gives them realistic bodies) */
+    people,
     /** a little bump and nodding along as you go over the street */
     update(t: number, speed: number) {
       const bump = speed > 0.5 ? Math.sin(t * (kind === "tricycle" ? 13 : 9)) * 0.012 : 0;

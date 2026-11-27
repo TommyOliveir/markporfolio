@@ -2,10 +2,13 @@
 // frame reads the controls, moves you (walking, running, jumping, climbing steps, bumping into things),
 // moves the camera (following you, keeping out of walls, the intro swoop and the "found him" shot),
 // and brings the rest of Molo along — jeepneys, people, pigeons, the trail to Mark and the sounds.
+// The people start out painted; the realistic ones (humans.ts) take their places once they've loaded.
 
 import {
   Fog,
+  Frustum,
   Group,
+  Matrix4,
   PerspectiveCamera,
   Raycaster,
   Vector2,
@@ -15,6 +18,7 @@ import {
   type Material,
   type Object3D,
 } from "three";
+import { seeded } from "@/lib/seeded";
 import { buildWorld } from "./build-world";
 import { LostPostcards } from "./quest";
 import { PancitErrand } from "./errand";
@@ -25,12 +29,15 @@ import type { Game } from "./game";
 import { loadFonts } from "./labels";
 import { Band } from "./band";
 import { Boy } from "./boy";
+import { loadHumans, type Humans } from "./humans";
 import { Life } from "./life";
+import type { Person } from "./people";
 import { buildMarkCorner } from "./mark";
 import { seeThrough, time } from "./materials";
 import { SUN, buildClouds, buildSky } from "./sky";
 import { BalloonFlight, PARKED_RADIUS, balloonCamera } from "./balloon";
 import { buildCabin, seatCamera } from "./ride";
+import type { View } from "./rig";
 import { Traffic, type Vehicle } from "./traffic";
 import { ceilingLocal, insideLocal, PLAN, PRAYER_SEATS } from "./church-interior";
 import {
@@ -113,6 +120,15 @@ export class Walk {
   private follow = new Vector3();
   private velocity = { x: 0, z: 0 };
   private jumpHeld = false;
+  // the realistic people: who to bring up to date each frame, and what they need to know
+  private figures: { tick: (dt: number, view: View) => void }[] = [];
+  private view: View;
+  private projection = new Matrix4();
+  private peopleReady = false;
+  // kept for the people who turn up later (the riders in a vehicle you board)
+  private humans: Humans | null = null;
+  private extrasRand = seeded(1901);
+  private born = performance.now();
 
   constructor(
     private game: Game,
@@ -120,6 +136,7 @@ export class Walk {
   ) {
     const world = buildWorld(lite);
     this.world = world;
+    this.view = { frustum: new Frustum(), camera: new Vector3(), player: new Vector3(), frame: 0, budget: 0, lite };
     const painted = world.painted as Material;
     this.traffic = new Traffic(painted, lite);
     this.traffic.onHorn = () => game.audio.horn();
@@ -191,6 +208,11 @@ export class Walk {
     game.attachWorld(world.obstacles);
     // the route planner's grid takes a moment; build it once the first frames are on screen
     if (!game.preview) this.gridTimer = window.setTimeout(() => game.setWalkGrid(world.walkGrid()), 400);
+    // the realistic people; until they're here (or if they can't load) the painted ones stand in
+    loadHumans(lite)
+      .then((humans) => this.alive && this.dress(humans))
+      .catch((e) => console.warn("The realistic people didn't load; showing the painted ones.", e))
+      .finally(() => (this.peopleReady = true));
     loadFonts().then(() => {
       if (!this.alive) return;
       this.signs = buildSigns(world.props.signPlacements, world.props.welcomeSign);
@@ -210,7 +232,8 @@ export class Walk {
     seeThrough.on.value = game.started && !inSeat && !this.flight ? 1 : 0;
     seeThrough.target.value.set(game.x, game.y + 1.1, game.z);
 
-    if (!this.readySent) {
+    // ready once the people are dressed (so they don't change in front of you), or after a few seconds
+    if (!this.readySent && (this.peopleReady || performance.now() - this.born > 6000)) {
       this.readySent = true;
       game.emit({ type: "ready" });
     }
@@ -707,6 +730,69 @@ export class Walk {
     }
     const fountains = [world.props.fountain, world.pool];
     game.audio.update(dt, Math.min(...fountains.map((f) => Math.hypot(f.x - game.x, f.z - game.z))));
+
+    // the realistic people, last, once everyone has moved and been posed
+    if (this.figures.length) {
+      const view = this.view;
+      camera.updateMatrixWorld();
+      this.projection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      view.frustum.setFromProjectionMatrix(this.projection);
+      camera.getWorldPosition(view.camera);
+      view.player.set(game.x, game.y, game.z);
+      view.frame++;
+      // you and Mark always; the rest take turns at this frame's few re-posings, starting somewhere new
+      // each frame so no one waits for long
+      const n = this.figures.length;
+      view.budget = Infinity;
+      for (let i = 0; i < Math.min(2, n); i++) this.figures[i].tick(dt, view);
+      view.budget = view.lite ? 10 : 24;
+      const from = view.frame % Math.max(1, n - 2);
+      for (let i = 0; i < n - 2; i++) this.figures[2 + ((from + i) % (n - 2))].tick(dt, view);
+    }
+  }
+
+  /**
+   * Gives everyone a realistic body: you, Mark, the townsfolk (a model to suit each, wearing their own
+   * colours where the model's clothes can take them) and the band in its red and white.
+   */
+  private dress(humans: Humans) {
+    this.humans = humans;
+    const rand = seeded(1898);
+    this.player.upgrade(humans.make("player"));
+    this.corner.mark.upgrade(humans.make("mark"));
+    this.figures.push(this.player, this.corner.mark);
+    for (const { person, mode } of this.life.figures()) {
+      const look = person.look;
+      // women in skirts; the sorbetes man and the gate guard (the band quest's singers) are men
+      const woman = look.skirt || look.hat === "bun" ? true : mode === "stand" ? false : null;
+      const id = mode === "kid" ? "player" : humans.crowd(rand.next, woman);
+      const rig = humans.make(id, { shirt: look.shirt, pants: look.pants, indoor: mode === "pray" });
+      const idle =
+        mode === "stand" ? rand.pick(["talk", "look", "idle"] as const) : rand.next() < 0.3 ? "look" : "idle";
+      person.upgrade(rig, idle);
+      this.figures.push(person);
+    }
+    for (const person of this.band.figures()) {
+      const rig = humans.make(humans.bandsman(rand.next), { shirt: person.look.shirt, pants: person.look.pants });
+      person.upgrade(rig);
+      this.figures.push(person);
+    }
+    // the cook at Kap Ising's, stirring the pancit
+    const cook = this.errand.cook;
+    cook.upgrade(humans.make(humans.crowd(rand.next, false), { shirt: cook.look.shirt, pants: cook.look.pants }));
+    this.figures.push(cook);
+    if (this.ride) this.dressRiders(this.ride.cabin.people);
+  }
+
+  /** The driver and passengers of a vehicle you've boarded, realistic like everyone else. */
+  private dressRiders(people: Person[]) {
+    const humans = this.humans;
+    if (!humans) return;
+    for (const p of people) {
+      const look = p.look;
+      p.upgrade(humans.make(humans.crowd(this.extrasRand.next, look.skirt ? true : null), look));
+      this.figures.push(p);
+    }
   }
 
   dispose() {
@@ -775,6 +861,7 @@ export class Walk {
   private board(v: Vehicle) {
     const game = this.game;
     const cabin = buildCabin(v.kind, v.colors, this.world.painted as Material);
+    this.dressRiders(cabin.people);
     v.object.add(cabin.group);
     this.traffic.rider = v;
     this.traffic.stopRequested = false;
@@ -805,6 +892,7 @@ export class Walk {
     game.pitch = 0.32;
     this.velocity.x = this.velocity.z = 0;
     vehicle.object.remove(cabin.group);
+    this.figures = this.figures.filter((f) => !(cabin.people as unknown[]).includes(f));
     cabin.dispose();
     this.ride = null;
     this.showShell(true, vehicle);

@@ -12,3 +12,6 @@ src/sections/find-mark/molo-map.ts
 
 # Large generated artwork
 public/art
+
+# Built 3D models
+public/models

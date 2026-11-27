@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# raw character downloads (Mixamo / Ara); only the built files in public/models are committed
+/assets/

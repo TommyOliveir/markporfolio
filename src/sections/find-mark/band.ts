@@ -292,6 +292,11 @@ export class Band {
     }
   }
 
+  /** The bandsmen (for dressing them as realistic people). */
+  figures() {
+    return this.members.map((m) => m.person);
+  }
+
   dispose() {
     this.members.forEach((m) => m.person.dispose());
   }

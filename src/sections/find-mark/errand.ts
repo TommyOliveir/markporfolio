@@ -106,7 +106,7 @@ export class PancitErrand {
   readonly stall: { x: number; z: number };
   /** where you stand to take the bowl: in front of the counter */
   readonly spot: { x: number; z: number };
-  private cook: Person;
+  readonly cook: Person;
   private potSteam: Steam;
   private heldSteam: Steam;
   private servedSteam: Steam;

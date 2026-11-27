@@ -391,6 +391,11 @@ export class Life {
     return [this.fountain.x + Math.cos(a) * r, this.fountain.z + Math.sin(a) * r];
   }
 
+  /** Everyone, and what they're doing (for dressing them as realistic people). */
+  figures(): { person: Person; mode: "walk" | "stand" | "sit" | "kid" | "eat" | "pray" }[] {
+    return [...this.walkers.map((w) => ({ person: w.person, mode: "walk" as const })), ...this.still];
+  }
+
   /** Moving people, as circles the visitor bumps into. */
   people() {
     this.colliders.length = 0;

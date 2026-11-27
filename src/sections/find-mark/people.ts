@@ -1,8 +1,27 @@
-// People: you, Mark, and the folk out enjoying the plaza. Each is a little jointed figure — legs, arms
+// People: Mark and the folk out enjoying the plaza. Each starts as a little painted figure — legs, arms
 // and head on pivots — so they can walk, wave, paint, and bob along. Facing +z.
+//
+// Once the realistic models have loaded (humans.ts), `upgrade` gives the figure a realistic body (a Rig)
+// and hides the painted one. The painted pivots keep moving underneath, unseen: the code that poses a
+// figure (the band's instruments, eating, praying, painting, waving) still sets them, and the realistic
+// body follows. Things held in the hands move to grips that follow the realistic hands.
 
-import { BufferGeometry, ConeGeometry, CylinderGeometry, Group, Mesh, SphereGeometry, type Material } from "three";
+import {
+  BufferGeometry,
+  ConeGeometry,
+  CylinderGeometry,
+  Euler,
+  Group,
+  Mesh,
+  Quaternion,
+  SphereGeometry,
+  Vector3,
+  type Material,
+  type Object3D,
+} from "three";
+import { bag, hat, umbrella, type Accessory } from "./accessories";
 import { Kit } from "./kit";
+import type { Goal, Pose, Rig, Side, View } from "./rig";
 
 export type Look = {
   skin: string;
@@ -40,8 +59,23 @@ export class Person {
   readonly legR = new Group();
   private phase = Math.random() * 10;
   private geometries: BufferGeometry[] = [];
+  // the painted body's own meshes (hidden once a realistic one takes over)
+  private own = new Set<Object3D>();
+  // how `animate` last left the arms: anything else means the figure is being posed
+  private natural = { L: new Euler(), R: new Euler() };
+  // the realistic body, once there is one
+  private rig: Rig | null = null;
+  private grips = { L: new Group(), R: new Group() };
+  private accessories: Accessory[] = [];
+  private motion = { speed: 0, air: false };
+  private idlePose: Pose = "idle";
+  private goals: Record<Side, Goal | null> = { L: null, R: null };
+  private smile = 0;
 
-  constructor(look: Look, material: Material) {
+  constructor(
+    readonly look: Look,
+    material: Material,
+  ) {
     const shoes = look.shoes ?? "#2f2a28";
     const keep = (k: Kit) => {
       const g = k.build();
@@ -159,10 +193,98 @@ export class Person {
 
     this.root.add(this.body);
     this.root.scale.setScalar(look.scale ?? 1);
+    this.root.traverse((o) => {
+      if (o instanceof Mesh) this.own.add(o);
+    });
+    this.natural.L.copy(this.armL.rotation);
+    this.natural.R.copy(this.armR.rotation);
+  }
+
+  /**
+   * Swaps the painted body for a realistic one. `idle` is what it does standing still (talking,
+   * looking about); sitting is read from the painted legs (bent up at the hip means seated).
+   */
+  upgrade(rig: Rig, idle: Pose = "idle") {
+    this.rig = rig;
+    this.idlePose = idle;
+    this.own.forEach((o) => (o.visible = false));
+    this.root.add(rig.root);
+    rig.setScale(this.root.scale.x);
+    for (const side of ["L", "R"] as const) {
+      const arm = side === "L" ? this.armL : this.armR;
+      const grip = this.grips[side];
+      this.root.add(grip);
+      for (const c of [...arm.children]) if (!this.own.has(c)) grip.add(c);
+    }
+    const look = this.look;
+    if (look.hat && look.hat !== "none" && look.hat !== "bun") {
+      const h = hat(look.hat, look.hatColor ?? DEFAULT_HAT[look.hat], look.plume);
+      h.group.position.y = -0.015; // snug on the head, over the hair
+      rig.headAnchor.add(h.group);
+      this.accessories.push(h);
+      rig.hide((m) => m.userData.kind === "hat"); // the model's own hat comes off
+    }
+    if (look.bag) this.wear(bag(look.bag), rig.hipAnchor);
+    if (look.umbrella) this.wear(umbrella(look.umbrella), this.grips.L);
+  }
+
+  private wear(a: Accessory, on: Object3D) {
+    on.add(a.group);
+    this.accessories.push(a);
+  }
+
+  /** Brings the realistic body up to date, after everything else has moved and posed the figure. */
+  tick(dt: number, view: View) {
+    const rig = this.rig;
+    if (!rig) return;
+    rig.setPose(this.legL.rotation.x < -0.9 ? "sit" : this.idlePose);
+    for (const side of ["L", "R"] as const) {
+      const goal = this.goals[side];
+      const arm = side === "L" ? this.armL : this.armR;
+      if (goal) rig.reach(side, goal);
+      else if (!near(arm.rotation, this.natural[side])) rig.point(side, this.armDirection(arm));
+      this.goals[side] = null;
+    }
+    rig.turnHead(this.head.rotation);
+    rig.setSmile(this.smile);
+    this.smile = 0;
+    if (rig.tick(dt, view, this.motion.speed, this.motion.air)) this.grip();
+  }
+
+  /**
+   * Which way a posed painted arm points, in the world, for the realistic arm to follow. Painted shoulders
+   * are half as wide again as real ones, so an arm angled in across the chest would carry a realistic
+   * hand right past the other one: the sideways part is narrowed to suit.
+   */
+  private armDirection(arm: Group) {
+    const toFigure = this.root.getWorldQuaternion(_q3).invert();
+    _dir.set(0, -1, 0).applyQuaternion(arm.getWorldQuaternion(_q1)).applyQuaternion(toFigure);
+    _dir.x *= 0.55;
+    return _dir.normalize().applyQuaternion(toFigure.invert());
+  }
+
+  /** Held things go where the realistic hands are, turned the way the painted arms point. */
+  private grip() {
+    const rig = this.rig!;
+    const rootQ = this.root.getWorldQuaternion(_q1).invert();
+    const scale = this.root.getWorldScale(_v1).x;
+    for (const side of ["L", "R"] as const) {
+      const grip = this.grips[side];
+      if (!grip.children.length) continue;
+      const arm = side === "L" ? this.armL : this.armR;
+      const armQ = arm.getWorldQuaternion(_q2);
+      const palm = rig.palm(side, _v2);
+      // the grip's origin is the painted shoulder, so its hand (0.6 m down the arm) lands on the palm
+      palm.sub(_v3.set(0, -0.6 * scale, 0).applyQuaternion(armQ));
+      grip.position.copy(this.root.worldToLocal(palm));
+      grip.quaternion.copy(rootQ).multiply(armQ);
+    }
   }
 
   /** Walk cycle for a given speed (m/s); standing still breathes gently. `air` tucks the legs for a jump. */
   animate(dt: number, speed: number, t: number, air = false) {
+    this.motion.speed = speed;
+    this.motion.air = air;
     const amt = Math.min(speed / 3.5, 1);
     this.phase += dt * (2 + speed * 2.3);
     const s = Math.sin(this.phase) * 0.7 * amt;
@@ -179,7 +301,9 @@ export class Person {
     }
     this.body.position.y = Math.abs(Math.cos(this.phase)) * 0.05 * amt + (1 - amt) * Math.sin(t * 2.2) * 0.008;
     this.body.rotation.x = amt * 0.08;
-    this.head.rotation.y = (1 - amt) * Math.sin(t * 0.4 + this.phase) * 0.25;
+    this.head.rotation.set(0, (1 - amt) * Math.sin(t * 0.4 + this.phase) * 0.25, 0);
+    this.natural.L.copy(this.armL.rotation);
+    this.natural.R.copy(this.armR.rotation);
   }
 
   /** Raises the right hand and waves. */
@@ -187,6 +311,9 @@ export class Person {
     this.armR.rotation.x = 0;
     this.armR.rotation.z = -2.6 + Math.sin(t * 9) * 0.35;
     this.head.rotation.z = Math.sin(t * 3) * 0.08;
+    // a realistic hand goes up beside the head, the forearm swinging from the elbow
+    this.goals.R = { from: "shoulder", x: -0.2 + Math.sin(t * 9) * 0.09, y: 0.32, z: 0.1 };
+    this.smile = 1;
   }
 
   /** Little brushstrokes at an easel. */
@@ -194,6 +321,9 @@ export class Person {
     this.armR.rotation.z = -0.3;
     this.armR.rotation.x = -1.2 + Math.sin(t * 3) * 0.15;
     this.head.rotation.z = Math.sin(t * 0.8) * 0.05;
+    // small strokes at the canvas, out in front at shoulder height
+    this.goals.R = { from: "shoulder", x: 0.06 + Math.sin(t * 3) * 0.05, y: -0.08 + Math.cos(t * 3) * 0.04, z: 0.44 };
+    this.smile = 0.2;
   }
 
   /** Puts a bite to eat in the right hand. */
@@ -225,6 +355,12 @@ export class Person {
     this.armL.rotation.x = -1.2 + Math.sin(t * 0.5 + phase) * 0.04;
     this.head.rotation.x = lift * 0.18 + (c > 1.2 && c < 3 ? Math.abs(Math.sin(t * 9)) * 0.04 : 0);
     this.head.rotation.y = c > 3.5 ? Math.sin((t + phase) * 0.35) * 0.3 : 0;
+    // realistic hands: one by the plate, the other lifting the food to the mouth and back
+    this.goals.R =
+      lift > 0.5
+        ? { from: "head", x: -0.01, y: -0.07 - (1 - lift) * 0.2, z: 0.12 + (1 - lift) * 0.2 }
+        : { from: "shoulder", x: -0.02, y: -0.3 + lift * 0.25, z: 0.34 - lift * 0.1 };
+    this.goals.L = { from: "shoulder", x: -0.05, y: -0.3 + Math.sin(t * 0.5 + phase) * 0.01, z: 0.32 };
   }
 
   /** Seated in a pew, praying: head bowed, hands together in front, breathing slowly. */
@@ -234,6 +370,9 @@ export class Person {
     this.armR.rotation.set(-1.0 + breathe * 0.02, 0, 0.42);
     this.head.rotation.x = 0.38 + Math.sin(t * 0.3 + phase) * 0.05;
     this.body.position.y = breathe * 0.006;
+    // realistic hands: together in front of the chest
+    this.goals.L = { from: "chest", x: 0.012, y: -0.1 + breathe * 0.004, z: 0.24 };
+    this.goals.R = { from: "chest", x: -0.012, y: -0.1 + breathe * 0.004, z: 0.24 };
   }
 
   /** Puts the arms back after waving or painting. */
@@ -244,8 +383,21 @@ export class Person {
 
   dispose() {
     this.geometries.forEach((g) => g.dispose());
+    this.accessories.forEach((a) => a.dispose());
+    this.rig?.dispose();
   }
 }
+
+const DEFAULT_HAT = { straw: "#e3c27a", beret: "#8c2633", cap: "#2c56b8", shako: "#f4f1ea" } as const;
+
+const _q1 = new Quaternion();
+const _q2 = new Quaternion();
+const _q3 = new Quaternion();
+const _v1 = new Vector3();
+const _v2 = new Vector3();
+const _v3 = new Vector3();
+const _dir = new Vector3();
+const near = (a: Euler, b: Euler) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) + Math.abs(a.z - b.z) < 1e-3;
 
 export type Food = "burger" | "fries" | "drink";
 

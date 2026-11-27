@@ -18,6 +18,7 @@ npm run lint          # eslint (flat config, eslint-config-next + prettier)
 npm run format        # prettier --write . (120 cols, double quotes, trailing commas)
 npm run format:check
 node scripts/build-molo-map.mjs   # re-download the Molo map from OpenStreetMap (needs network)
+node scripts/build-people.mjs     # rebuild public/models/people from assets/mixamo (add model ids to rebuild just those)
 ```
 
 There is no test suite. CI (`.github/workflows/ci.yml`) runs format:check, lint, typecheck, then build.
@@ -204,3 +205,35 @@ sign's colours.
 Jollibee building, the bee mascot's point, and sign overrides. These are added in the "Hand-added" block of
 `build-molo-map.mjs` and mirrored by hand in `molo-map.ts`. Keep both in sync, since the script needs
 network access to re-run. The map data is © OpenStreetMap (ODbL); keep the on-page credit.
+
+**Realistic people.** Every figure (you, Mark, the townsfolk, the band) starts as a painted Kit figure and
+is swapped for a realistic skinned model once the models load. If they can't load, the painted ones stay.
+
+- **Assets.** The raw downloads live in `assets/mixamo/` and are git-ignored, because Mixamo's files may not
+  be redistributed raw:
+  - `characters/`: Mixamo FBX files, plus three Ara 3D Gen GLBs (`mark`, `man-1`, `man-3`) that have facial
+    blendshapes and separate clothing pieces
+  - `moves/`: Mixamo clips
+- **Build.** `scripts/build-people.mjs` turns them into `public/models/people/<id>.glb`:
+  - converts with fbx2gltf, strips the `mixamorig` bone prefixes and merges each model onto one skin
+  - retargets every move onto each skeleton: Ara rests in an A-pose, Mixamo in a T-pose
+  - strips the crowd's finger bones (baking a relaxed curl into the mesh) and simplifies the crowd
+  - shrinks textures to WebP and compresses with meshopt
+  - the player and Mark also get a `-lite` copy for phones
+  - it prints a retarget check per model: limbs that are off by more than a few degrees mean it's broken
+- **`humans.ts`.** Holds the model registry (heights, which clothes take a figure's colours) and loads the
+  models once per lite/full. It tunes materials by the `kind` the build stored: skin, hair, eyes, decal,
+  cloth. It also holds the people-only environment map. The lite set (phones and the landing-page preview)
+  is smaller.
+- **`rig.ts` (`Rig`).** One figure:
+  - blends walk, jog and run in step by speed, so feet don't slide
+  - poses: idle, sit, talk, look
+  - two-bone IK for hands, plus head turns and Mark's blinks and smile
+  - it updates less often with distance, and not at all when hidden or off-screen; still figures skip bone
+    uploads; a per-frame budget caps re-posing
+- **`Person.upgrade` / `Boy.upgrade`.** These swap the bodies. The painted pivots stay as invisible drivers,
+  so code that poses a figure through `armL`/`armR`/`head`/`legL` (the band, `eat`, `pray`, `paint`,
+  `wave`) still works. Bent legs mean seated. Held things move to grips that follow the real hands. Hats,
+  bags and the backpack come from `accessories.ts`.
+- **Shadows.** Skinned meshes need their own `customDepthMaterial`. Sharing three's default depth material
+  with the unskinned town makes it re-prepare shaders on every switch.

@@ -4,10 +4,15 @@
 // proper stride (knees lifting, arms swinging, hips bobbing and rolling, shoulders twisting against the
 // legs), he leans into a run, tucks up when he jumps, and when he stands still he breathes, shifts his
 // weight, blinks and looks about. Facing +z, feet at y = 0, about 1.75 m tall in the hat.
+//
+// Once the realistic models have loaded, `upgrade` swaps him for a realistic boy (a Rig, see humans.ts)
+// with the same yellow backpack (the model wears its own cap); the painted one is hidden but keeps its
+// look-about going.
 
 import {
   BufferGeometry,
   CylinderGeometry,
+  Euler,
   Group,
   Mesh,
   SphereGeometry,
@@ -15,7 +20,9 @@ import {
   type Material,
   type Object3D,
 } from "three";
+import { backpack, type Accessory } from "./accessories";
 import { Kit } from "./kit";
+import type { Rig, View } from "./rig";
 
 const SKIN = "#dca37a"; // a warm, light tan
 const HAIR = "#5b3418";
@@ -58,6 +65,10 @@ export class Boy {
   /** something held in both hands in front of him (a bowl of pancit), and how far his arms are up for it */
   private carrying: Object3D | null = null;
   private hold = 0;
+  private rig: Rig | null = null;
+  private gear: Accessory[] = [];
+  private motion = { speed: 0, air: false };
+  private turn = new Euler();
 
   constructor(material: Material) {
     const mesh = (k: Kit, parent: Group) => {
@@ -266,6 +277,8 @@ export class Boy {
 
   /** The whole body for this frame: `speed` in m/s, `air` while jumping or falling. */
   animate(dt: number, speed: number, t: number, air = false) {
+    this.motion.speed = speed;
+    this.motion.air = air;
     const ease = (v: number, to: number, k: number) => v + (to - v) * Math.min(dt * k, 1);
     this.stride = ease(this.stride, Math.min(speed / 2.5, 1), 8);
     this.run = ease(this.run, Math.max(0, Math.min((speed - 3) / 2.5, 1)), 5);
@@ -349,17 +362,55 @@ export class Boy {
     this.eyes.scale.y = this.blink < 0.12 ? 0.1 : 1;
   }
 
-  /** Holds something in both hands in front of his chest (null puts it down). */
+  /**
+   * Holds something in both hands in front of his chest (null puts it down). On the realistic boy it
+   * sits in front of his chest and his hands reach round it (see `tick`).
+   */
   carry(obj: Object3D | null) {
-    if (this.carrying) this.chest.remove(this.carrying);
+    this.carrying?.removeFromParent();
     this.carrying = obj;
-    if (obj) {
+    if (!obj) return;
+    if (this.rig) {
+      obj.position.set(0, -0.1, 0.32);
+      this.rig.chestAnchor.add(obj);
+    } else {
       obj.position.set(0, 0.17, 0.42);
       this.chest.add(obj);
     }
   }
 
+  /** Swaps the painted boy for a realistic one, with the same backpack. */
+  upgrade(rig: Rig) {
+    const held = this.carrying;
+    this.carry(null);
+    this.root.traverse((o) => {
+      if (o instanceof Mesh) o.visible = false;
+    });
+    this.rig = rig;
+    this.root.add(rig.root);
+    rig.setScale(1);
+    const b = backpack(PACK);
+    rig.backAnchor.add(b.group);
+    this.gear.push(b);
+    if (held) this.carry(held);
+  }
+
+  /** Brings the realistic body up to date (after `animate`), looking about when he stands still. */
+  tick(dt: number, view: View) {
+    if (!this.rig) return;
+    this.turn.set(0, this.look.now * (1 - this.stride), 0);
+    this.rig.turnHead(this.turn);
+    // carrying: both hands round the bowl, out in front of his chest
+    if (this.hold > 0.05) {
+      this.rig.reach("L", { from: "chest", x: 0.13, y: -0.13, z: 0.3 });
+      this.rig.reach("R", { from: "chest", x: -0.13, y: -0.13, z: 0.3 });
+    }
+    this.rig.tick(dt, view, this.motion.speed, this.motion.air);
+  }
+
   dispose() {
     this.geometries.forEach((g) => g.dispose());
+    this.gear.forEach((g) => g.dispose());
+    this.rig?.dispose();
   }
 }
