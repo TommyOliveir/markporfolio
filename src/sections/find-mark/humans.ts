@@ -153,7 +153,7 @@ function averageLuma(image: CanvasImageSource) {
  * them into a prefiltered map for each renderer by itself.
  */
 let env: CubeTexture | null = null;
-function environment() {
+export function environment() {
   if (env) return env;
   const face = (stops: [number, string][]) => {
     const c = document.createElement("canvas");

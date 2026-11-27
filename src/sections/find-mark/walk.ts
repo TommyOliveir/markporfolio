@@ -31,14 +31,15 @@ import { Band } from "./band";
 import { Boy } from "./boy";
 import { loadHumans, type Humans } from "./humans";
 import { Life } from "./life";
-import type { Person } from "./people";
+import { Person, crowdLook } from "./people";
 import { buildMarkCorner } from "./mark";
 import { seeThrough, time } from "./materials";
 import { SUN, buildClouds, buildSky } from "./sky";
 import { BalloonFlight, PARKED_RADIUS, balloonCamera } from "./balloon";
-import { buildCabin, seatCamera } from "./ride";
+import { SEATS, buildCabin, emptyCabin, seatCamera, type Seat } from "./ride";
 import type { View } from "./rig";
 import { Traffic, type Vehicle } from "./traffic";
+import { loadVehicles, type Vehicles } from "./vehicles";
 import { ceilingLocal, insideLocal, PLAN, PRAYER_SEATS } from "./church-interior";
 import {
   BALLOON,
@@ -98,6 +99,8 @@ export class Walk {
   private ride: {
     vehicle: Vehicle;
     cabin: ReturnType<typeof buildCabin>;
+    /** a realistic vehicle's own seats for each view (otherwise the painted cabin's, from ride.ts) */
+    seats: Record<"passenger" | "front", Seat> | null;
     view: string | null;
     yaw0: number;
     pitch0: number;
@@ -125,6 +128,9 @@ export class Walk {
   private view: View;
   private projection = new Matrix4();
   private peopleReady = false;
+  private vehiclesReady = false;
+  // the driver and passengers sitting in the realistic jeepneys
+  private jeepneyRiders: Person[] = [];
   // kept for the people who turn up later (the riders in a vehicle you board)
   private humans: Humans | null = null;
   private extrasRand = seeded(1901);
@@ -213,6 +219,11 @@ export class Walk {
       .then((humans) => this.alive && this.dress(humans))
       .catch((e) => console.warn("The realistic people didn't load; showing the painted ones.", e))
       .finally(() => (this.peopleReady = true));
+    // and the realistic cars and jeepneys, with people in the jeepneys
+    loadVehicles(lite)
+      .then((vehicles) => this.alive && this.fitVehicles(vehicles, lite))
+      .catch((e) => console.warn("The realistic vehicles didn't load; showing the painted ones.", e))
+      .finally(() => (this.vehiclesReady = true));
     loadFonts().then(() => {
       if (!this.alive) return;
       this.signs = buildSigns(world.props.signPlacements, world.props.welcomeSign);
@@ -233,7 +244,7 @@ export class Walk {
     seeThrough.target.value.set(game.x, game.y + 1.1, game.z);
 
     // ready once the people are dressed (so they don't change in front of you), or after a few seconds
-    if (!this.readySent && (this.peopleReady || performance.now() - this.born > 6000)) {
+    if (!this.readySent && ((this.peopleReady && this.vehiclesReady) || performance.now() - this.born > 6000)) {
       this.readySent = true;
       game.emit({ type: "ready" });
     }
@@ -606,8 +617,7 @@ export class Walk {
       seatCamera(
         camera,
         ride.vehicle.object,
-        ride.vehicle.kind,
-        game.riding,
+        ride.seats?.[game.riding] ?? SEATS[ride.vehicle.kind][game.riding],
         game.yaw - ride.yaw0,
         (game.pitch - ride.pitch0) * 0.8,
       );
@@ -782,6 +792,7 @@ export class Walk {
     cook.upgrade(humans.make(humans.crowd(rand.next, false), { shirt: cook.look.shirt, pants: cook.look.pants }));
     this.figures.push(cook);
     if (this.ride) this.dressRiders(this.ride.cabin.people);
+    this.dressRiders(this.jeepneyRiders);
   }
 
   /** The driver and passengers of a vehicle you've boarded, realistic like everyone else. */
@@ -807,6 +818,7 @@ export class Walk {
     this.world.dispose();
     this.traffic.dispose();
     this.life.dispose();
+    this.jeepneyRiders.forEach((p) => p.dispose());
     this.band.dispose();
     this.player.dispose();
     this.corner.dispose();
@@ -860,12 +872,19 @@ export class Walk {
   /** Climbs into a vehicle: its cabin goes on, you sit down, and it carries on with you aboard. */
   private board(v: Vehicle) {
     const game = this.game;
-    const cabin = buildCabin(v.kind, v.colors, this.world.painted as Material);
+    // a realistic jeepney has its own seats (and people) inside; anything else gets its painted cabin
+    const inside = v.body?.info.interior ? v.body.info.views : null;
+    const cabin = inside ? emptyCabin() : buildCabin(v.kind, v.colors, this.world.painted as Material);
     this.dressRiders(cabin.people);
     v.object.add(cabin.group);
     this.traffic.rider = v;
     this.traffic.stopRequested = false;
-    this.ride = { vehicle: v, cabin, view: null, yaw0: 0, pitch0: 0 };
+    const seat = (w: { x: number; y: number; z: number; look: number }): Seat => ({
+      at: new Vector3(w.x, w.y, w.z),
+      look: w.look,
+    });
+    const seats = inside ? { passenger: seat(inside.passenger), front: seat(inside.front) } : null;
+    this.ride = { vehicle: v, cabin, seats, view: null, yaw0: 0, pitch0: 0 };
     game.riding = "passenger";
     game.route = null;
     game.target = null;
@@ -903,10 +922,40 @@ export class Walk {
     game.emit({ type: "ride", view: null });
   }
 
-  /** The vehicle's own closed model: hidden while you look from inside, shown from outside. */
+  /**
+   * The vehicle's own closed model: hidden while you look from inside, shown from outside. A realistic
+   * jeepney is its own cabin, so it stays.
+   */
   private showShell(on: boolean, vehicle = this.ride?.vehicle) {
     if (!vehicle) return;
-    vehicle.object.children[0].visible = on;
+    vehicle.shell.visible = on || !!vehicle.body?.info.interior;
     if (this.ride) this.ride.cabin.group.visible = !on;
+  }
+
+  /**
+   * Realistic bodies for the cars and jeepneys, and people in the jeepneys: a driver at the wheel and
+   * passengers on the benches (fewer on phones). Painted people at first, made realistic with the rest.
+   */
+  private fitVehicles(vehicles: Vehicles, lite: boolean) {
+    this.traffic.upgrade(vehicles);
+    const rand = seeded(1912);
+    const painted = this.world.painted as Material;
+    for (const v of this.traffic.vehicles) {
+      const body = v.body;
+      if (!body || v.kind !== "jeepney") continue;
+      const driver = body.info.seats.find((s) => s.driver);
+      const benches = body.info.seats.filter((s) => !s.driver).slice(0, lite ? 1 : 3);
+      for (const seat of [driver, ...benches]) {
+        if (!seat) continue;
+        const p = new Person({ ...crowdLook(rand), umbrella: undefined, backpack: undefined, bag: undefined }, painted);
+        p.root.position.set(seat.x, seat.y - 0.81, seat.z);
+        p.root.rotation.y = seat.ry;
+        p.legL.rotation.x = p.legR.rotation.x = -1.35;
+        if (seat.driver) p.armL.rotation.x = p.armR.rotation.x = -1.1; // hands on the wheel
+        body.group.add(p.root);
+        this.jeepneyRiders.push(p);
+      }
+    }
+    if (this.humans) this.dressRiders(this.jeepneyRiders);
   }
 }

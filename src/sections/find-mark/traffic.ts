@@ -1,6 +1,8 @@
 // Jeepneys, tricycles and cars on Molo's streets. They follow the real one-way loop around the plaza
 // (Lopez Jaena → M.H. del Pilar → Jocson → San Pedro, from the OpenStreetMap data), and the two-way
 // run along Avanceña and Locsin, keeping to the right. They slow behind each other and stop for you.
+// They start out painted; once the models load, the cars and jeepneys get realistic bodies (vehicles.ts)
+// whose wheels roll and steer and whose brake lights come on as they slow.
 
 import {
   CatmullRomCurve3,
@@ -9,14 +11,15 @@ import {
   Mesh,
   SphereGeometry,
   Vector3,
-  type BufferGeometry,
   type Material,
+  type Object3D,
 } from "three";
 import { seeded } from "@/lib/seeded";
 import type { Circle } from "./collide";
 import { Kit } from "./kit";
 import { roads } from "./molo-map";
 import { CRUISE, type RideKind } from "./ride";
+import type { Body, Vehicles } from "./vehicles";
 
 type Kind = RideKind;
 
@@ -182,7 +185,14 @@ export type Vehicle = {
   object: Group;
   heading: number;
   honked: number;
-  geometry: BufferGeometry;
+  /** the painted model: what's drawn until (or unless) a realistic body takes over */
+  painted: Mesh;
+  /** whatever is drawn now: the painted model or the realistic body (the bounce and riding act on this) */
+  shell: Object3D;
+  /** the realistic body, once the models have loaded (see vehicles.ts) */
+  body: Body | null;
+  /** how far the front wheels are turned (radians, + = left) */
+  steer: number;
   /** paint and trim colours, for the cabin you see when you ride it */
   colors: [string, string];
 };
@@ -230,7 +240,10 @@ export class Traffic {
         object,
         heading: 0,
         honked: 0,
-        geometry,
+        painted: mesh,
+        shell: mesh,
+        body: null,
+        steer: 0,
         colors:
           kind === "jeepney"
             ? [BODY[i % BODY.length], STRIPE[i % STRIPE.length]]
@@ -250,6 +263,19 @@ export class Traffic {
       spawn(routes.eastbound, kind, i + 5, 0.1 + i * 0.3),
     );
     this.update(0, { x: 1e5, z: 1e5 });
+  }
+
+  /** Swaps the painted cars and jeepneys for realistic ones (tricycles stay painted for now). */
+  upgrade(models: Vehicles) {
+    for (const v of this.vehicles) {
+      if (v.body || !models.has(v.kind)) continue;
+      const body = models.make(v.kind, v.colors[0]);
+      if (!body) continue;
+      v.object.add(body.group);
+      v.painted.visible = false;
+      v.shell = body.group;
+      v.body = body;
+    }
   }
 
   /** A jeepney, tricycle or car you could climb into from (x, z): close by, and stopped or nearly. */
@@ -338,7 +364,21 @@ export class Traffic {
       v.object.position.set(this.p.x, 0.02, this.p.z);
       v.object.rotation.y = v.heading;
       // a little bounce on Iloilo's streets
-      v.object.children[0].position.y = v.speed > 0.5 ? Math.abs(Math.sin(v.s * 1.7)) * 0.025 : 0;
+      v.shell.position.y = v.speed > 0.5 ? Math.abs(Math.sin(v.s * 1.7)) * 0.025 : 0;
+      const body = v.body;
+      if (body) {
+        // wheels roll with the road; the front ones turn into the bend; brake lights while slowing or stopped
+        v.steer += (Math.max(-0.45, Math.min(0.45, d * 2.2)) - v.steer) * Math.min(dt * 6, 1);
+        for (const w of body.wheels) {
+          w.node.rotation.x += (v.speed * dt) / w.radius;
+          if (w.front) w.node.rotation.y = v.steer;
+        }
+        if (body.brake) {
+          const braking = target < v.speed - 0.3 || v.speed < 0.3;
+          body.brake.emissiveIntensity +=
+            ((braking ? 2.4 : 0.25) - body.brake.emissiveIntensity) * Math.min(dt * 10, 1);
+        }
+      }
     }
   }
 
@@ -357,6 +397,9 @@ export class Traffic {
   }
 
   dispose() {
-    this.vehicles.forEach((v) => v.geometry.dispose());
+    for (const v of this.vehicles) {
+      v.painted.geometry.dispose();
+      v.body?.dispose();
+    }
   }
 }

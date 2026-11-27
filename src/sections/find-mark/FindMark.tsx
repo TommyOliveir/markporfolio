@@ -25,6 +25,7 @@ import type { FlyView } from "./balloon";
 import type { RideKind, RideView } from "./ride";
 import Minimap from "./Minimap";
 import { useMedia, useWebGL } from "./support";
+import { VEHICLE_CREDITS, VEHICLE_LICENSE } from "./vehicles";
 import { LOST_POSTCARDS, directionsUrl, shop, type Landmark } from "./world";
 
 const Scene = dynamic(() => import("./FindMarkScene"), { ssr: false });
@@ -1093,6 +1094,29 @@ export default function FindMark() {
           >
             <p className="font-display text-3xl font-semibold italic">How to get around</p>
             <Controls touch={touch} />
+            {/* the vehicles are CC BY 4.0 models: they're credited here */}
+            <p className="mt-5 text-xs leading-relaxed text-ink-soft">
+              3D models:{" "}
+              {VEHICLE_CREDITS.map((c, i) => (
+                <span key={c.source}>
+                  {i > 0 && "; "}
+                  <a href={c.source} target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">
+                    {c.title}
+                  </a>{" "}
+                  by {c.author}
+                </span>
+              ))}{" "}
+              (
+              <a
+                href={VEHICLE_LICENSE.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-ink"
+              >
+                {VEHICLE_LICENSE.name}
+              </a>
+              ).
+            </p>
             <button type="button" onClick={() => setHelp(false)} className="btn btn-ink mt-6 w-full">
               Got it
             </button>

@@ -237,3 +237,19 @@ is swapped for a realistic skinned model once the models load. If they can't loa
   bags and the backpack come from `accessories.ts`.
 - **Shadows.** Skinned meshes need their own `customDepthMaterial`. Sharing three's default depth material
   with the unskinned town makes it re-prepare shaders on every switch.
+
+**Realistic vehicles.** The cars and jeepneys work the same way as the people.
+
+- **Assets and build.** Raw models live in `assets/vehicles/`, which is git-ignored. `scripts/build-vehicles.mjs`
+  writes `public/models/cars/{car,jeepney}[-lite].glb`. It drops badges and splits wheels onto hub nodes,
+  merges plain-colour parts, simplifies, and stores the seats, views and credit in the scene extras.
+- **Runtime.**
+  - `vehicles.ts` dresses the materials (clear-coat paint, tinted glass, lamps) and makes one body per
+    vehicle.
+  - `Traffic.upgrade` swaps them in, spins and steers the wheels, and lights the brake lights. `Vehicle.shell`
+    is whatever is drawn now.
+  - A realistic jeepney carries its own riders. You ride inside it using its own seats (`emptyCabin`). The car
+    still uses the painted cabin.
+- **Tricycles** stay painted until a CC BY model is found.
+- **Credits.** Both models are CC BY 4.0. They're credited in the walk's help panel via `VEHICLE_CREDITS`;
+  update it if the models change.

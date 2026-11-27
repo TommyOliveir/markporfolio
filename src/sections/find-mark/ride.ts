@@ -19,7 +19,7 @@ import { Person, crowdLook } from "./people";
 
 export type RideKind = "jeepney" | "tricycle" | "car";
 export type RideView = "passenger" | "front" | "outside";
-type Seat = { at: Vector3; look: number };
+export type Seat = { at: Vector3; look: number };
 
 const CHROME = "#cfd4d8";
 const TYRE = "#1f1f22";
@@ -51,6 +51,14 @@ export const SEATS: Record<RideKind, Record<Exclude<RideView, "outside">, Seat>>
 
 /** How fast each kind goes while you're aboard (a touch slower than usual, for the view), m/s. */
 export const CRUISE: Record<RideKind, number> = { jeepney: 5.5, tricycle: 5, car: 6.5 };
+
+/**
+ * No cabin: for a realistic vehicle that has its own seats inside (a jeepney), which stays on show while
+ * you ride, with its own driver and passengers aboard.
+ */
+export function emptyCabin(): ReturnType<typeof buildCabin> {
+  return { group: new Group(), people: [], update() {}, dispose() {} };
+}
 
 /** The cabin and its riders for the vehicle you climbed into. `colors` are its outside paint and trim. */
 export function buildCabin(kind: RideKind, colors: [string, string], material: Material) {
@@ -268,12 +276,10 @@ const tmp = new Vector3();
 export function seatCamera(
   camera: { position: Vector3; lookAt(v: Vector3): void },
   vehicle: { position: Vector3; rotation: { y: number } },
-  kind: RideKind,
-  view: Exclude<RideView, "outside">,
+  seat: Seat,
   turn: number,
   tilt: number,
 ) {
-  const seat = SEATS[kind][view];
   const h = vehicle.rotation.y;
   const c = Math.cos(h);
   const s = Math.sin(h);
